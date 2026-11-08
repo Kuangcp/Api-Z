@@ -100,7 +100,9 @@ api-z 的存在理由就是这条链路。**不要退回全量字符串 + 每帧
 - 响应区三段：Raw / Model / AGUI；非 SSE 且 JSON 时提供 JSON 美化（只读 editor）。
 - 原始行用等宽字体、`SingleLine`、`clipLine`；AGUI 文本用分块 markdown。
 - 历史回看只读 HAR；不要假装支持重放。
-- 树/列表选中、hover、空态要有明确视觉；破坏性操作必须二次确认（当前已移除未确认的删除入口）。
+- 树/列表选中、hover、空态要有明确视觉；破坏性操作必须二次确认（`ui/tree_actions.go` 的删除弹窗）。
+- 树 CRUD 走 `app/store_crud.go`；UI 动作/弹窗在 `ui/tree_actions.go`，不要直接拼 SQL。
+- 多标签最近切换用 `Root.mru`（`Ctrl+Tab` 在最近两个之间切换）；全局搜索用 `Ctrl+K`。
 - 新增组件先看 db-g 的 `ui/` 实现（sidebar/tabs/result/settings），保持交互一致。
 
 ## 测试
@@ -115,6 +117,7 @@ api-z 的存在理由就是这条链路。**不要退回全量字符串 + 每帧
 - UI 测试不碰真实配置：`app.PathsAt(t.TempDir(), t.TempDir())`。
 - HTTP/SSE 测试用 `httptest`；AG-UI 断言消息、工具调用、中断、事件计数。
 - 性能回归：`TestRootAguiLargeStream`（600KB 单帧）与 `TestSessionManyEvents`（10k 事件）。
+- 树 CRUD：`TestStoreTreeCRUD`（级联/复制/排序）与 `TestTreeCreateRenameDelete`（真实 UI 流程）。
 - 修 bug 先写失败测试再改；不要用“看起来对”代替验证。
 - 测试不要依赖用户真实数据目录、网络或当前时间。
 

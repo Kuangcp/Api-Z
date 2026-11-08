@@ -45,12 +45,12 @@ go run . -migrate \
 
 ## 功能（当前）
 
-- 集合 / 文件夹 / 请求树（搜索、展开、键盘/鼠标选择）。
+- 集合 / 文件夹 / 请求树：搜索、展开、键盘/鼠标选择；新建集合/文件夹/请求、重命名、复制请求、上移/下移、级联删除（二次确认）。
 - 请求编辑：方法、URL、Params、Headers、Body（JSON 高亮编辑器）、Auth（inherit/noauth/bearer/basic/apikey）。
 - 环境变量 `{{name}}` 替换、环境切换、集合/文件夹/请求级 Auth 继承。
 - 发送 / 取消 / 120s 超时；状态码、耗时、大小、TTFT、SSE 事件数。
 - 响应：Raw（虚拟化、自动跟随末尾）、Model（OpenAI/Responses delta 提取）、AG-UI（文本/工具调用/推理/中断卡片）、JSON 美化（只读高亮编辑器）。
-- 多标签，每个标签独立的编辑与流式响应状态。
+- 多标签，每个标签独立的编辑与流式响应状态；`Ctrl+Tab` 在最近两个标签间切换，`Ctrl+K` 全局搜索。
 - HAR 落盘与最近 10 次历史回看。
 - api-x 只读识别 + 一次性迁移（SQLite、environments.json、response artifacts）。
 

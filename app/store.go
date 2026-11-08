@@ -276,13 +276,6 @@ func (s *Store) CreateCollection(name string) (string, error) {
 	return id, err
 }
 
-func (s *Store) DeleteRequest(id string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	_, err := s.db.Exec(`DELETE FROM requests WHERE id = ?`, id)
-	return err
-}
-
 func (s *Store) AddExchange(e Exchange) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

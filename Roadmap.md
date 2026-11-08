@@ -167,7 +167,7 @@ api-z 使用自己的数据目录与 SQLite（WAL）：
 
 验收：真实 api-x 数据迁移后，任选请求完成「打开 → 发送 → 看响应 → 保存 → 重启恢复」。
 
-### P2 集合/环境/多标签
+### P2 集合/环境/多标签（进行中：CRUD / 多标签 / 搜索已完成）
 
 - 集合/文件夹/请求 CRUD、拖拽排序、重命名、复制、删除。
 - 多标签、最近请求切换（Ctrl+Tab）、全局搜索（Ctrl+K）。
@@ -237,7 +237,8 @@ go run . -migrate -api-x-home ~/.local/share/api-x -data-dir /tmp/api-z-smoke
 - [x] P0 骨架（Go module、mygo v0.8.3、SQLite、日志、迁移、headless 测试）
 - [x] P1 单请求闭环（HTTP、集合树、编辑器、环境/Auth、HAR、历史、多标签）
 - [ ] P1 补：JSON 折叠树、响应搜索、请求实际发送预览
-- [ ] P2 集合/文件夹/请求 CRUD 与拖拽、Postman 导入导出、主题/快捷键设置
+- [x] P2 第一批：集合/文件夹/请求 CRUD、重命名、复制、上下移动、级联删除、Ctrl+Tab、Ctrl+K
+- [ ] P2 第二批：拖拽/移动到文件夹、Postman 导入导出、环境管理器、主题/快捷键设置
 - [x] P3 核心：SSE 增量、Raw/Model/AGUI、工具/推理/中断卡片、600KB/万事件验证
 - [ ] P3 补：TPOT、树节点 loading、AG-UI 自定义 UI 组件
 - [ ] P4 OpenAPI、data/ Push/Pull、curl/代码片段

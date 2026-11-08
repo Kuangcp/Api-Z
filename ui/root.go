@@ -28,6 +28,14 @@ type treeRow struct {
 	open   bool
 }
 
+type dialogKind int
+
+const (
+	dialogNone dialogKind = iota
+	dialogRename
+	dialogDelete
+)
+
 type Root struct {
 	win    *mygo.Window
 	paths  app.Paths
@@ -54,6 +62,18 @@ type Root struct {
 	status        string
 	err           string
 	migratedFrom  string
+
+	dialog     dialogKind
+	dialogOpen bool
+	dlgKind    string
+	dlgID      string
+	dlgName    string
+	dlgErr     string
+
+	mru         []string
+	searchOpen  bool
+	globalQuery string
+	globalList  ui.ListState
 }
 
 func NewRoot(paths app.Paths, store *app.Store, tree app.Tree, env app.EnvState) *Root {
@@ -84,6 +104,13 @@ func (r *Root) Attach(win *mygo.Window) { r.win = win }
 
 func (r *Root) View(c *ui.Context) {
 	t := c.Theme()
+	if c.Shortcut(ui.Ctrl, ui.KeyK) {
+		r.searchOpen = true
+		r.globalQuery = ""
+	}
+	if c.Shortcut(ui.Ctrl, ui.KeyTab) && !r.searchOpen && !r.dialogOpen {
+		r.switchRecent()
+	}
 	ui.Column(c).Fill().Children(func() {
 		r.topBar(c)
 		ui.Split(c, &r.sidebarWidth, func() {
@@ -105,6 +132,8 @@ func (r *Root) View(c *ui.Context) {
 			ui.Text(c, r.paths.DataDir).FontSize(11.5).TextColor(t.TextMuted).SingleLine()
 		})
 	})
+	r.dialogs(c)
+	r.globalSearch(c)
 }
 
 func (r *Root) topBar(c *ui.Context) {
@@ -143,6 +172,13 @@ func (r *Root) sidebar(c *ui.Context) {
 		ui.Row(c).Gap(6).Children(func() {
 			ui.TextInput(c, &r.search).Placeholder("搜索请求 / URL").Grow(1)
 			ui.Button(c, "清空").Disabled(r.search == "").OnClick(func() { r.search = "" })
+		})
+		ui.Row(c).Gap(6).Children(func() {
+			if ui.Button(c, "新建集合").Clicked() {
+				r.createCollection()
+			}
+			ui.Spacer(c)
+			ui.Text(c, fmt.Sprintf("%d 个请求", len(r.tree.Requests))).FontSize(11).TextColor(t.TextMuted)
 		})
 		rows := r.visibleRows()
 		ui.List(c, &r.treeList, len(rows), func(i int) {
@@ -202,17 +238,7 @@ func (r *Root) treeRow(c *ui.Context, row treeRow) {
 		}
 	}
 	btn.ContextMenu(func(m *ui.Menu) {
-		if row.kind == rowRequest {
-			if m.Item("打开").Chosen() {
-				r.openRequest(row.id)
-			}
-			if m.Item("复制 URL").Chosen() {
-				if req, ok := r.tree.Request(row.id); ok {
-					c.WriteClipboard(req.URL)
-					c.Toast("已复制 URL")
-				}
-			}
-		}
+		r.treeContextMenu(c, m, row)
 	})
 }
 
@@ -345,6 +371,7 @@ func (r *Root) openRequest(id string) {
 		if ed.ID == id {
 			r.active = i
 			r.selected = id
+			r.touchMRU(id)
 			return
 		}
 	}
@@ -357,6 +384,7 @@ func (r *Root) openRequest(id string) {
 	r.tabs = append(r.tabs, ed)
 	r.active = len(r.tabs) - 1
 	r.selected = id
+	r.touchMRU(id)
 }
 
 func (r *Root) session(id string) *app.Session {
@@ -414,6 +442,7 @@ func (r *Root) tabBar(c *ui.Context) {
 			if btn.Clicked() {
 				r.active = i
 				r.selected = ed.ID
+				r.touchMRU(ed.ID)
 			}
 			btn.ContextMenu(func(m *ui.Menu) {
 				if m.Item("关闭").Chosen() {
