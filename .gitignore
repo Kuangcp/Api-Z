@@ -1,0 +1,27 @@
+# ---- build output ----
+/api-z
+/api-z.exe
+/dist/
+*.test
+*.out
+/coverage.*
+
+# ---- IDE / OS ----
+/.idea/
+/.vscode/
+.DS_Store
+Thumbs.db
+
+# ---- runtime data (when run with -data-dir .) ----
+/api-z.db
+/api-z.db-shm
+/api-z.db-wal
+/environments.json
+/request/
+/logs/
+
+# ---- logs / temporary response artifacts ----
+*.log
+*.raw
+*.har
+*.tmp
