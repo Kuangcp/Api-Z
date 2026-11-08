@@ -1,6 +1,6 @@
 # Api-Z
 
-Go + [mygo](https://github.com/egoist/mygo) 的本地优先 API 调试客户端，替代 [api-x](../Kotlin/api-x)（Kotlin + Compose Desktop）。
+Go + [mygo](https://github.com/egoist/mygo) 的本地优先 API 调试客户端，替代 [api-x](https://github.com/Kuangcp/api-x)（Kotlin + Compose Desktop）。
 
 面向 Spring Boot / Spring AI / AgentScope / MCP 调试：HTTP、SSE、AG-UI 流式响应、集合/环境、认证继承、HAR 历史。
 设计与阶段见 [`Roadmap.md`](Roadmap.md)。
