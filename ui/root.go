@@ -177,6 +177,9 @@ func (r *Root) sidebar(c *ui.Context) {
 			if ui.Button(c, "新建集合").Clicked() {
 				r.createCollection()
 			}
+			if ui.Button(c, "导入").Tooltip("导入 Postman Collection v2.1").Clicked() {
+				r.importPostmanDialog()
+			}
 			ui.Spacer(c)
 			ui.Text(c, fmt.Sprintf("%d 个请求", len(r.tree.Requests))).FontSize(11).TextColor(t.TextMuted)
 		})

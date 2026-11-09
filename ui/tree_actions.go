@@ -2,8 +2,10 @@ package ui
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
+	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
 	"api-z/app"
@@ -18,6 +20,9 @@ func (r *Root) treeContextMenu(c *ui.Context, m *ui.Menu, row treeRow) {
 		}
 		if m.Item("新建请求").Chosen() {
 			r.createRequest(id, "")
+		}
+		if m.Item("导出 Postman…").Chosen() {
+			r.exportPostmanDialog(id, r.store.NodeName(app.NodeCollection, id))
 		}
 		m.Separator()
 	case app.NodeFolder:
@@ -287,6 +292,148 @@ func (r *Root) closeTabsForRemoved() {
 	if r.active < 0 {
 		r.active = 0
 	}
+}
+
+func (r *Root) readAndImportPostman(path string) (string, string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", "", err
+	}
+	portable, err := app.ParsePostmanCollection(data)
+	if err != nil {
+		return "", "", err
+	}
+	id, err := r.store.ImportPortableCollection(portable)
+	if err != nil {
+		return "", "", err
+	}
+	return id, portable.Name, nil
+}
+
+func (r *Root) importPostmanFile(path string) (string, string, error) {
+	id, name, err := r.readAndImportPostman(path)
+	if err != nil {
+		r.err = "导入失败: " + err.Error()
+		return "", "", err
+	}
+	r.expanded["c:"+id] = true
+	r.reloadTree()
+	r.selected = "c:" + id
+	r.status = "已导入集合「" + name + "」"
+	r.err = ""
+	return id, name, nil
+}
+
+func (r *Root) importPostmanDialog() {
+	if r.win == nil {
+		return
+	}
+	win := r.win
+	go func() {
+		paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{
+			Parent:  win,
+			Title:   "导入 Postman Collection",
+			Filters: []mygo.FileFilter{{Name: "Postman Collection", Extensions: []string{"json"}}},
+		})
+		if err != nil || len(paths) == 0 {
+			return
+		}
+		path := paths[0]
+		data, err := os.ReadFile(path)
+		if err != nil {
+			win.Update(func() { r.err = "导入失败: " + err.Error() })
+			return
+		}
+		portable, err := app.ParsePostmanCollection(data)
+		if err != nil {
+			win.Update(func() { r.err = "导入失败: " + err.Error() })
+			return
+		}
+		id, err := r.store.ImportPortableCollection(portable)
+		win.Update(func() {
+			if err != nil {
+				r.err = "导入失败: " + err.Error()
+				return
+			}
+			r.expanded["c:"+id] = true
+			r.reloadTree()
+			r.selected = "c:" + id
+			r.status = "已导入集合「" + portable.Name + "」"
+			r.err = ""
+		})
+	}()
+}
+
+func (r *Root) exportPostmanFile(collectionID, path string) error {
+	portable, err := r.store.ExportPortableCollection(collectionID)
+	if err != nil {
+		return err
+	}
+	data, err := app.PostmanJSON(portable)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0o600)
+}
+
+func (r *Root) exportPostmanDialog(collectionID, name string) {
+	if r.win == nil {
+		return
+	}
+	win := r.win
+	go func() {
+		portable, err := r.store.ExportPortableCollection(collectionID)
+		if err != nil {
+			win.Update(func() { r.err = "导出失败: " + err.Error() })
+			return
+		}
+		data, err := app.PostmanJSON(portable)
+		if err != nil {
+			win.Update(func() { r.err = "导出失败: " + err.Error() })
+			return
+		}
+		path, err := mygo.Dialog.Save(mygo.SaveDialogOptions{
+			Parent:      win,
+			Title:       "导出 Postman Collection v2.1",
+			DefaultPath: safeFileName(name) + ".postman_collection.json",
+			Filters:     []mygo.FileFilter{{Name: "JSON", Extensions: []string{"json"}}},
+		})
+		if err != nil || path == "" {
+			return
+		}
+		if !strings.HasSuffix(strings.ToLower(path), ".json") {
+			path += ".json"
+		}
+		if err := os.WriteFile(path, data, 0o600); err != nil {
+			win.Update(func() { r.err = "导出失败: " + err.Error() })
+			return
+		}
+		win.Update(func() {
+			r.status = "已导出: " + path
+			r.err = ""
+		})
+	}()
+}
+
+func safeFileName(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return "collection"
+	}
+	var b strings.Builder
+	for _, r := range s {
+		switch r {
+		case '/', '\\', ':', '*', '?', '"', '<', '>', '|':
+			b.WriteByte('_')
+		default:
+			b.WriteRune(r)
+		}
+	}
+	out := strings.TrimSpace(b.String())
+	if out == "" {
+		return "collection"
+	}
+	return out
 }
 
 func (r *Root) dialogs(c *ui.Context) {

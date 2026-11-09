@@ -53,6 +53,7 @@ go run . -migrate \
 - 多标签，每个标签独立的编辑与流式响应状态；`Ctrl+Tab` 在最近两个标签间切换，`Ctrl+K` 全局搜索。
 - HAR 落盘与最近 10 次历史回看。
 - api-x 只读识别 + 一次性迁移（SQLite、environments.json、response artifacts）。
+- Postman Collection v2.1 导入/导出：嵌套文件夹、根请求、auth、禁用 Header、raw/urlencoded body、query/params、集合变量与描述；保留 `_api_x_id` 便于回导。
 
 ## 数据兼容
 
@@ -74,6 +75,6 @@ main.go -> ui -> app -> httpclient
 ## 已知限制
 
 - 原始超长行（>4096 字节）只显示截断，复制仍为全文。
-- 暂无：Multipart、代理 UI、OpenAPI/Postman 导入导出、MCP、工作流/压测、请求发送前预览、响应搜索。
+- 暂无：Multipart、代理 UI、OpenAPI 导入/刷新、MCP、工作流/压测、请求发送前预览、响应搜索。
 - AG-UI 的 `MESSAGES_SNAPSHOT` 只做基础还原；复杂 UI 组件（如自定义 interrupt UI）尚未渲染。
 - 历史回看只读 HAR，不支持重新执行。
