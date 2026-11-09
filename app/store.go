@@ -327,7 +327,7 @@ func (s *Store) LoadEnvironments() (EnvState, error) {
 	if err := json.Unmarshal(b, &st); err != nil {
 		return EnvState{Version: 1}, fmt.Errorf("store: environments: %w", err)
 	}
-	return st.Normalize(), nil
+	return st.EnsureTags().Normalize(), nil
 }
 
 func (s *Store) SaveEnvironments(st EnvState) error {

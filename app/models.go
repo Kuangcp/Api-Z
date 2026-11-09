@@ -200,6 +200,23 @@ func (s EnvState) Map() map[string]string {
 	return m
 }
 
+// EnsureTags fills a missing tag from the environment name, as api-x does:
+// "HCCM - Test" -> "HCCM", "工作流-Local" -> "工作流".
+func (s EnvState) EnsureTags() EnvState {
+	out := s.Clone()
+	for i := range out.Environments {
+		e := &out.Environments[i]
+		if strings.TrimSpace(e.Tag) != "" {
+			continue
+		}
+		name := strings.TrimSpace(e.Name)
+		if idx := strings.IndexAny(name, " -"); idx > 0 {
+			e.Tag = strings.TrimSpace(name[:idx])
+		}
+	}
+	return out
+}
+
 func (s EnvState) Normalize() EnvState {
 	ids := map[string]bool{}
 	for _, e := range s.Environments {
@@ -226,4 +243,50 @@ type Exchange struct {
 	TTFTMS     int64
 	EventCount int
 	HARPath    string
+}
+
+// NewID returns a UUID v4 string for new collections, environments, etc.
+func NewID() string { return newID() }
+
+func (s EnvState) Clone() EnvState {
+	out := s
+	out.Environments = make([]Environment, len(s.Environments))
+	for i, e := range s.Environments {
+		out.Environments[i] = e
+		out.Environments[i].Variables = append([]EnvVariable(nil), e.Variables...)
+	}
+	return out
+}
+
+// Clean normalizes a draft before saving: ids, names, tags, empty variables,
+// and the active environment.
+func (s EnvState) Clean() EnvState {
+	out := s.Clone()
+	envs := out.Environments[:0]
+	for i := range out.Environments {
+		e := out.Environments[i]
+		if e.ID == "" {
+			e.ID = NewID()
+		}
+		e.Name = strings.TrimSpace(e.Name)
+		if e.Name == "" {
+			e.Name = "未命名环境"
+		}
+		e.Tag = strings.TrimSpace(e.Tag)
+		vars := e.Variables[:0]
+		for _, v := range e.Variables {
+			v.Key = strings.TrimSpace(v.Key)
+			if v.Key != "" {
+				vars = append(vars, v)
+			}
+		}
+		e.Variables = vars
+		envs = append(envs, e)
+	}
+	out.Environments = envs
+	out = out.EnsureTags().Normalize()
+	if len(out.Environments) > 0 && out.ActiveEnvironmentID == "" {
+		out.ActiveEnvironmentID = out.Environments[0].ID
+	}
+	return out
 }

@@ -104,6 +104,7 @@ api-z 的存在理由就是这条链路。**不要退回全量字符串 + 每帧
 - 树/列表选中、hover、空态要有明确视觉；破坏性操作必须二次确认（`ui/tree_actions.go` 的删除弹窗）。
 - 树 CRUD 走 `app/store_crud.go`；UI 动作/弹窗在 `ui/tree_actions.go`，不要直接拼 SQL。
 - 多标签最近切换用 `Root.mru`（`Ctrl+Tab` 在最近两个之间切换）；全局搜索用 `Ctrl+K`。
+- 环境管理器编辑的是 `Root.envDraft` 深拷贝，按「保存环境」才 `Clean()` 落盘；不要在视图里直接改 `Root.env`。
 - 新增组件先看 db-g 的 `ui/` 实现（sidebar/tabs/result/settings），保持交互一致。
 
 ## 测试
@@ -120,6 +121,7 @@ api-z 的存在理由就是这条链路。**不要退回全量字符串 + 每帧
 - 性能回归：`TestRootAguiLargeStream`（600KB 单帧）与 `TestSessionManyEvents`（10k 事件）。
 - 树 CRUD：`TestStoreTreeCRUD`（级联/复制/排序）与 `TestTreeCreateRenameDelete`（真实 UI 流程）。
 - Postman：`TestPostmanImportExport`（字段/auth/禁用项/回导）与 `TestPostmanImportExportUI`（文件导入/导出）。
+- 环境：`TestEnvironmentManager`（新增/变量/保存）与 `TestEnvironmentManagerDeleteActive`（删除当前环境）。
 - 修 bug 先写失败测试再改；不要用“看起来对”代替验证。
 - 测试不要依赖用户真实数据目录、网络或当前时间。
 
