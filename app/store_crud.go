@@ -332,3 +332,154 @@ func (s *Store) NodeName(kind, id string) string {
 	_ = s.db.QueryRow(`SELECT name FROM `+table+` WHERE id = ?`, id).Scan(&name)
 	return name
 }
+
+// MoveNodeTo reparents a request or folder under a collection root or folder.
+// Folders cannot be moved into themselves or their descendants.
+func (s *Store) MoveNodeTo(kind, id, collectionID, parentFolderID string) error {
+	if strings.TrimSpace(collectionID) == "" {
+		return errors.New("目标集合为空")
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var exists int
+	if err := tx.QueryRow(`SELECT COUNT(*) FROM collections WHERE id = ?`, collectionID).Scan(&exists); err != nil {
+		return err
+	}
+	if exists == 0 {
+		return errors.New("目标集合不存在")
+	}
+
+	switch kind {
+	case NodeRequest:
+		var oldCollection string
+		var oldFolder sql.NullString
+		if err := tx.QueryRow(`SELECT collection_id, folder_id FROM requests WHERE id = ?`, id).
+			Scan(&oldCollection, &oldFolder); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return errors.New("请求不存在")
+			}
+			return err
+		}
+		if oldCollection == collectionID && oldFolder.String == parentFolderID {
+			return nil
+		}
+		if err := validateTargetFolder(tx, collectionID, parentFolderID); err != nil {
+			return err
+		}
+		sortOrder, err := nextSortOrder(tx, "requests", collectionID, parentFolderID, "folder_id")
+		if err != nil {
+			return err
+		}
+		if _, err := tx.Exec(`UPDATE requests SET collection_id = ?, folder_id = NULLIF(?, ''),
+			sort_order = ?, updated_at = ? WHERE id = ?`,
+			collectionID, parentFolderID, sortOrder, time.Now().UnixMilli(), id); err != nil {
+			return err
+		}
+	case NodeFolder:
+		var oldCollection string
+		var oldParent sql.NullString
+		if err := tx.QueryRow(`SELECT collection_id, parent_folder_id FROM folders WHERE id = ?`, id).
+			Scan(&oldCollection, &oldParent); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return errors.New("文件夹不存在")
+			}
+			return err
+		}
+		if oldCollection == collectionID && oldParent.String == parentFolderID {
+			return nil
+		}
+		if parentFolderID != "" {
+			if parentFolderID == id {
+				return errors.New("不能把文件夹移动到自身")
+			}
+			var targetCollection string
+			if err := tx.QueryRow(`SELECT collection_id FROM folders WHERE id = ?`, parentFolderID).
+				Scan(&targetCollection); err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					return errors.New("目标文件夹不存在")
+				}
+				return err
+			}
+			if targetCollection != collectionID {
+				return errors.New("目标文件夹不属于目标集合")
+			}
+			var descendants int
+			if err := tx.QueryRow(`WITH RECURSIVE sub(id) AS (
+					SELECT id FROM folders WHERE id = ?
+					UNION ALL
+					SELECT f.id FROM folders f JOIN sub ON f.parent_folder_id = sub.id
+				) SELECT COUNT(*) FROM sub WHERE id = ?`, id, parentFolderID).Scan(&descendants); err != nil {
+				return err
+			}
+			if descendants > 0 {
+				return errors.New("不能把文件夹移动到自己的子文件夹")
+			}
+		}
+		sortOrder, err := nextSortOrder(tx, "folders", collectionID, parentFolderID, "parent_folder_id")
+		if err != nil {
+			return err
+		}
+		if _, err := tx.Exec(`UPDATE folders SET collection_id = ?, parent_folder_id = NULLIF(?, ''),
+			sort_order = ?, updated_at = ? WHERE id = ?`,
+			collectionID, parentFolderID, sortOrder, time.Now().UnixMilli(), id); err != nil {
+			return err
+		}
+		if oldCollection != collectionID {
+			// The subtree follows its folder into the new collection.
+			sub := `WITH RECURSIVE sub(id) AS (
+				SELECT id FROM folders WHERE id = ?
+				UNION ALL
+				SELECT f.id FROM folders f JOIN sub ON f.parent_folder_id = sub.id
+			) `
+			if _, err := tx.Exec(sub+`UPDATE folders SET collection_id = ? WHERE id IN (SELECT id FROM sub)`,
+				id, collectionID); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(sub+`UPDATE requests SET collection_id = ? WHERE folder_id IN (SELECT id FROM sub)`,
+				id, collectionID); err != nil {
+				return err
+			}
+		}
+	default:
+		return fmt.Errorf("unknown node kind %q", kind)
+	}
+	return tx.Commit()
+}
+
+func validateTargetFolder(tx *sql.Tx, collectionID, folderID string) error {
+	if folderID == "" {
+		return nil
+	}
+	var targetCollection string
+	if err := tx.QueryRow(`SELECT collection_id FROM folders WHERE id = ?`, folderID).Scan(&targetCollection); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return errors.New("目标文件夹不存在")
+		}
+		return err
+	}
+	if targetCollection != collectionID {
+		return errors.New("目标文件夹不属于目标集合")
+	}
+	return nil
+}
+
+func nextSortOrder(tx *sql.Tx, table, collectionID, parentID, parentColumn string) (int, error) {
+	query := `SELECT COALESCE(MAX(sort_order), -1) + 1 FROM ` + table + ` WHERE collection_id = ? AND `
+	if parentID == "" {
+		query += parentColumn + ` IS NULL`
+	} else {
+		query += parentColumn + ` = ?`
+	}
+	var sort int
+	var err error
+	if parentID == "" {
+		err = tx.QueryRow(query, collectionID).Scan(&sort)
+	} else {
+		err = tx.QueryRow(query, collectionID, parentID).Scan(&sort)
+	}
+	return sort, err
+}

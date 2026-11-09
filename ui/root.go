@@ -79,6 +79,14 @@ type Root struct {
 	envDraft app.EnvState
 	envSel   int
 	envErr   string
+
+	moveOpen       bool
+	moveKind       string
+	moveID         string
+	moveName       string
+	moveCollection string
+	moveFolder     string
+	moveErr        string
 }
 
 func NewRoot(paths app.Paths, store *app.Store, tree app.Tree, env app.EnvState) *Root {
@@ -140,6 +148,7 @@ func (r *Root) View(c *ui.Context) {
 	r.dialogs(c)
 	r.globalSearch(c)
 	r.envManager(c)
+	r.moveModal(c)
 }
 
 func (r *Root) topBar(c *ui.Context) {

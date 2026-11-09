@@ -163,3 +163,70 @@ func TestStoreTreeCRUD(t *testing.T) {
 		t.Fatalf("exchanges after collection delete = %d", n)
 	}
 }
+
+func TestStoreMoveNodeTo(t *testing.T) {
+	paths := PathsAt(t.TempDir(), t.TempDir())
+	if err := paths.Ensure(); err != nil {
+		t.Fatal(err)
+	}
+	store, err := OpenStore(paths.DBPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	a, _ := store.CreateCollection("A")
+	b, _ := store.CreateCollection("B")
+	f1, _ := store.CreateFolder(a, "", "F1")
+	f1sub, _ := store.CreateFolder(a, f1, "F1-sub")
+	f2, _ := store.CreateFolder(a, "", "F2")
+	r1, _ := store.CreateRequest(a, "", "R1")
+	r2, _ := store.CreateRequest(a, f1, "R2")
+
+	if err := store.MoveNodeTo(NodeRequest, r1, a, f2); err != nil {
+		t.Fatal(err)
+	}
+	tree, _ := store.LoadTree()
+	req, _ := tree.Request(r1)
+	if req.FolderID != f2 || req.CollectionID != a {
+		t.Fatalf("moved request = %#v", req)
+	}
+
+	// Moving F1 to B carries F1-sub and R2 with it.
+	if err := store.MoveNodeTo(NodeFolder, f1, b, ""); err != nil {
+		t.Fatal(err)
+	}
+	tree, _ = store.LoadTree()
+	f, ok := tree.Collection(b)
+	if !ok || f.ID != b {
+		t.Fatal("collection B missing")
+	}
+	for _, folder := range tree.Folders {
+		if folder.ID == f1 || folder.ID == f1sub {
+			if folder.CollectionID != b {
+				t.Fatalf("folder %s collection = %s, want B", folder.ID, folder.CollectionID)
+			}
+		}
+	}
+	req, _ = tree.Request(r2)
+	if req.CollectionID != b || req.FolderID != f1 {
+		t.Fatalf("R2 after folder move = %#v", req)
+	}
+
+	// A folder cannot move into itself or its descendant.
+	if err := store.MoveNodeTo(NodeFolder, f1, b, f1sub); err == nil {
+		t.Fatal("moving into descendant succeeded")
+	}
+	if err := store.MoveNodeTo(NodeFolder, f1, b, f1); err == nil {
+		t.Fatal("moving into itself succeeded")
+	}
+
+	// Moving a request across collections.
+	if err := store.MoveNodeTo(NodeRequest, r2, a, ""); err != nil {
+		t.Fatal(err)
+	}
+	tree, _ = store.LoadTree()
+	req, _ = tree.Request(r2)
+	if req.CollectionID != a || req.FolderID != "" {
+		t.Fatalf("R2 cross-collection = %#v", req)
+	}
+}

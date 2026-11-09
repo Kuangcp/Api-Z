@@ -33,6 +33,9 @@ func (r *Root) treeContextMenu(c *ui.Context, m *ui.Menu, row treeRow) {
 		if m.Item("新建请求").Chosen() {
 			r.createRequest(folder.CollectionID, folder.ID)
 		}
+		if m.Item("移动到文件夹…").Chosen() {
+			r.beginMove(app.NodeFolder, id, folder.Name)
+		}
 		m.Separator()
 	case app.NodeRequest:
 		req, _ := r.tree.Request(id)
@@ -45,6 +48,9 @@ func (r *Root) treeContextMenu(c *ui.Context, m *ui.Menu, row treeRow) {
 		if m.Item("复制 URL").Chosen() {
 			c.WriteClipboard(req.URL)
 			c.Toast("已复制 URL")
+		}
+		if m.Item("移动到文件夹…").Chosen() {
+			r.beginMove(app.NodeRequest, id, req.Name)
 		}
 		m.Separator()
 	}
