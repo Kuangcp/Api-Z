@@ -104,8 +104,12 @@ api-z 的存在理由就是这条链路。**不要退回全量字符串 + 每帧
 - 树/列表选中、hover、空态要有明确视觉；破坏性操作必须二次确认（`ui/tree_actions.go` 的删除弹窗）。
 - 树 CRUD 走 `app/store_crud.go`；UI 动作/弹窗在 `ui/tree_actions.go`，不要直接拼 SQL。
 - 多标签最近切换用 `Root.mru`（`Ctrl+Tab` 在最近两个之间切换）；全局搜索用 `Ctrl+K`。
+- 变量补全：URL/Headers/Params 用 `ui.Popover` + `Element.TextSelection/SetTextSelection`；Body 用 `editor.OnCompletion`。插入格式统一 `{{key}}`，不要在每个输入框里各写一套。
+- 主题/快捷键：持久化到 `<config>/theme.json` / `keymap.json`；动作表在 `ui/keymap.go`，不要在 View 里散写 `c.Shortcut`。录制用 `detectChord`（`Context.KeyDown` + `Modifiers`），冲突时删除旧绑定。
+- 主题只在 `themeKey` 变化时 `SetTheme`；系统模式保留启动时捕获的 `baseTheme`。强调色必须是 `#rrggbb`。
 - 环境管理器编辑的是 `Root.envDraft` 深拷贝，按「保存环境」才 `Clean()` 落盘；不要在视图里直接改 `Root.env`。
-- 树节点移动走 `Store.MoveNodeTo`（请求/文件夹，跨集合/层级）；文件夹移动必须同步子树的 `collection_id`，并阻止移入自身/子树。UI 在 `ui/move.go`。
+- 树节点移动走 `Store.MoveNodeTo`（请求/文件夹，跨集合/层级）；拖拽插入走 `Store.MoveNodeBefore`。文件夹移动必须同步子树的 `collection_id`，并阻止移入自身/子树。UI 在 `ui/move.go` / `ui/tree_drag.go`。
+- 拖拽目标规则：文件夹/请求可拖入集合根或文件夹；文件夹之间可上下排序，请求之间可上下排序；文件夹不能与请求混排（树显示文件夹在前）。
 - 新增组件先看 db-g 的 `ui/` 实现（sidebar/tabs/result/settings），保持交互一致。
 
 ## 测试
@@ -123,7 +127,9 @@ api-z 的存在理由就是这条链路。**不要退回全量字符串 + 每帧
 - 树 CRUD：`TestStoreTreeCRUD`（级联/复制/排序）与 `TestTreeCreateRenameDelete`（真实 UI 流程）。
 - Postman：`TestPostmanImportExport`（字段/auth/禁用项/回导）与 `TestPostmanImportExportUI`（文件导入/导出）。
 - 环境：`TestEnvironmentManager`（新增/变量/保存）与 `TestEnvironmentManagerDeleteActive`（删除当前环境）。
-- 移动：`TestStoreMoveNodeTo`（跨集合/子树更新/环检测）与 `TestMoveRequestToFolderUI` / `TestMoveFolderHidesSubtreeUI`。
+- 移动：`TestStoreMoveNodeTo`（跨集合/子树更新/环检测）、`TestStoreMoveNodeBefore`（插入排序）、`TestMoveRequestToFolderUI` / `TestMoveFolderHidesSubtreeUI` / `TestDragRequestIntoFolderUI`。
+- 变量补全：`TestFindVarPrefixInsert`（前后缀/光标）、`TestVariableAutocompleteUI` / `TestVariableAutocompleteTextArea`（弹出/点击插入）、`TestVariableAutocompleteBodyEditor`（编辑器 completion）。
+- 设置：`TestChordParseFormat`、`TestResolveTheme`、`TestSettingsThemeAndKeymap`、`TestThemeResetsToSystem`。
 - 修 bug 先写失败测试再改；不要用“看起来对”代替验证。
 - 测试不要依赖用户真实数据目录、网络或当前时间。
 

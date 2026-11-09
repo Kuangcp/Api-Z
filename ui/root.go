@@ -87,6 +87,20 @@ type Root struct {
 	moveCollection string
 	moveFolder     string
 	moveErr        string
+
+	settingsOpen bool
+	settingsTab  int
+	themePrefs   app.ThemePrefs
+	themePath    string
+	themeKey     string
+	baseTheme    *ui.Theme
+	accentHex    string
+
+	keymap      map[string]string
+	keymapPath  string
+	recording   string
+	recordMsg   string
+	settingsErr string
 }
 
 func NewRoot(paths app.Paths, store *app.Store, tree app.Tree, env app.EnvState) *Root {
@@ -101,6 +115,8 @@ func NewRoot(paths app.Paths, store *app.Store, tree app.Tree, env app.EnvState)
 		sidebarWidth:  300,
 		editorPercent: 52,
 		migratedFrom:  store.Meta("migrated_from"),
+		themePath:     app.ThemePath(paths.ConfigDir),
+		keymapPath:    app.KeymapPath(paths.ConfigDir),
 	}
 	for _, c := range tree.Collections {
 		r.expanded["c:"+c.ID] = true
@@ -109,6 +125,9 @@ func NewRoot(paths app.Paths, store *app.Store, tree app.Tree, env app.EnvState)
 		r.envName = a.Name
 	}
 	r.envNames = envNames(env)
+	r.themePrefs = app.LoadThemePrefs(r.themePath)
+	r.accentHex = r.themePrefs.Accent
+	r.keymap = mergedKeymap(app.LoadKeymap(r.keymapPath))
 	r.status = fmt.Sprintf("%d 个集合 · %d 个请求", len(tree.Collections), len(tree.Requests))
 	return r
 }
@@ -116,14 +135,10 @@ func NewRoot(paths app.Paths, store *app.Store, tree app.Tree, env app.EnvState)
 func (r *Root) Attach(win *mygo.Window) { r.win = win }
 
 func (r *Root) View(c *ui.Context) {
+	r.applyTheme(c)
+	r.handleRecording(c)
+	r.handleShortcuts(c)
 	t := c.Theme()
-	if c.Shortcut(ui.Ctrl, ui.KeyK) {
-		r.searchOpen = true
-		r.globalQuery = ""
-	}
-	if c.Shortcut(ui.Ctrl, ui.KeyTab) && !r.searchOpen && !r.dialogOpen {
-		r.switchRecent()
-	}
 	ui.Column(c).Fill().Children(func() {
 		r.topBar(c)
 		ui.Split(c, &r.sidebarWidth, func() {
@@ -149,6 +164,7 @@ func (r *Root) View(c *ui.Context) {
 	r.globalSearch(c)
 	r.envManager(c)
 	r.moveModal(c)
+	r.settingsModal(c)
 }
 
 func (r *Root) topBar(c *ui.Context) {
@@ -170,6 +186,9 @@ func (r *Root) topBar(c *ui.Context) {
 		}
 		if ui.Button(c, "环境管理…").Clicked() {
 			r.openEnvManager()
+		}
+		if ui.Button(c, "设置").Clicked() {
+			r.settingsOpen = true
 		}
 	})
 }
@@ -470,14 +489,7 @@ func (r *Root) tabBar(c *ui.Context) {
 			}
 			btn.ContextMenu(func(m *ui.Menu) {
 				if m.Item("关闭").Chosen() {
-					r.saveEditor(ed)
-					r.tabs = append(r.tabs[:i], r.tabs[i+1:]...)
-					if r.active >= len(r.tabs) {
-						r.active = len(r.tabs) - 1
-					}
-					if r.active < 0 {
-						r.active = 0
-					}
+					r.closeTabAt(i)
 				}
 				if m.Item("保存").Chosen() {
 					r.saveEditor(ed)

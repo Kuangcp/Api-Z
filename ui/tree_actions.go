@@ -502,3 +502,45 @@ func (r *Root) dialogs(c *ui.Context) {
 		r.finishDialog()
 	}
 }
+
+func (r *Root) newRequestFromSelection() {
+	sel := r.selected
+	switch {
+	case strings.HasPrefix(sel, "c:"):
+		r.createRequest(strings.TrimPrefix(sel, "c:"), "")
+	case strings.HasPrefix(sel, "f:"):
+		if f, ok := r.folderByID(strings.TrimPrefix(sel, "f:")); ok {
+			r.createRequest(f.CollectionID, f.ID)
+		}
+	case sel != "":
+		if req, ok := r.tree.Request(sel); ok {
+			r.createRequest(req.CollectionID, req.FolderID)
+		}
+	default:
+		if len(r.tree.Collections) > 0 {
+			r.createRequest(r.tree.Collections[0].ID, "")
+		} else {
+			r.createCollection()
+		}
+	}
+}
+
+func (r *Root) closeTabAt(i int) {
+	if i < 0 || i >= len(r.tabs) {
+		return
+	}
+	ed := r.tabs[i]
+	r.saveEditor(ed)
+	if sess := r.sessions[ed.ID]; sess != nil {
+		sess.Cancel()
+		delete(r.sessions, ed.ID)
+	}
+	r.removeMRU(ed.ID)
+	r.tabs = append(r.tabs[:i], r.tabs[i+1:]...)
+	if r.active >= len(r.tabs) {
+		r.active = len(r.tabs) - 1
+	}
+	if r.active < 0 {
+		r.active = 0
+	}
+}

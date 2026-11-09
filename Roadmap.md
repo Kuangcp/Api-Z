@@ -239,7 +239,7 @@ go run . -migrate -api-x-home ~/.local/share/api-x -data-dir /tmp/api-z-smoke
 - [ ] P1 补：JSON 折叠树、响应搜索、请求实际发送预览
 - [x] P2 第一批：集合/文件夹/请求 CRUD、重命名、复制、上下移动、级联删除、Ctrl+Tab、Ctrl+K
 - [x] P2 第二批：Postman v2.1 导入/导出
-- [ ] P2 第三批：拖拽排序、变量自动补全、主题/快捷键设置
+- [x] P2 第四批：主题/快捷键设置
 - [x] P3 核心：SSE 增量、Raw/Model/AGUI、工具/推理/中断卡片、600KB/万事件验证
 - [ ] P3 补：TPOT、树节点 loading、AG-UI 自定义 UI 组件
 - [ ] P4 OpenAPI、data/ Push/Pull、curl/代码片段

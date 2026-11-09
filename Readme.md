@@ -45,13 +45,16 @@ go run . -migrate \
 
 ## 功能（当前）
 
-- 集合 / 文件夹 / 请求树：搜索、展开、键盘/鼠标选择；新建集合/文件夹/请求、重命名、复制请求、上移/下移、移动到文件夹（跨集合/层级）、级联删除（二次确认）。
+- 集合 / 文件夹 / 请求树：搜索、展开、键盘/鼠标选择；新建集合/文件夹/请求、重命名、复制请求、上移/下移、移动到文件夹（跨集合/层级）、拖拽排序/拖入文件夹、级联删除（二次确认）。
 - 请求编辑：方法、URL、Params、Headers、Body（JSON 高亮编辑器）、Auth（inherit/noauth/bearer/basic/apikey）。
 - 环境变量 `{{name}}` 替换、环境切换、集合/文件夹/请求级 Auth 继承。
 - 环境管理器：多环境、tag 分组、变量增删改、设为当前；保存后立即用于替换。
+- 变量补全：URL/Headers/Params 输入 `{{` 弹出当前环境变量，Body 编辑器用 completion 菜单；插入 `{{key}}` 并保留光标。
 - 发送 / 取消 / 120s 超时；状态码、耗时、大小、TTFT、SSE 事件数。
 - 响应：Raw（虚拟化、自动跟随末尾）、Model（OpenAI/Responses delta 提取）、AG-UI（文本/工具调用/推理/中断卡片）、JSON 美化（只读高亮编辑器）。
 - 多标签，每个标签独立的编辑与流式响应状态；`Ctrl+Tab` 在最近两个标签间切换，`Ctrl+K` 全局搜索。
+- 设置：主题（跟随系统/浅色/深色 + 强调色）、快捷键可改键（录制、冲突替换、恢复默认），落盘 `theme.json` / `keymap.json`。
+- 默认快捷键：`Ctrl+Enter` 发送、`Ctrl+S` 保存、`Ctrl+K` 搜索、`Ctrl+Tab` 最近切换、`Ctrl+N` 新建请求、`Ctrl+W` 关闭标签、`Ctrl+,` 设置。
 - HAR 落盘与最近 10 次历史回看。
 - api-x 只读识别 + 一次性迁移（SQLite、environments.json、response artifacts）。
 - Postman Collection v2.1 导入/导出：嵌套文件夹、根请求、auth、禁用 Header、raw/urlencoded body、query/params、集合变量与描述；保留 `_api_x_id` 便于回导。
