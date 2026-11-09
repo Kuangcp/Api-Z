@@ -101,6 +101,18 @@ type Root struct {
 	recording   string
 	recordMsg   string
 	settingsErr string
+
+	openAPIOpen   bool
+	openAPIName   string
+	openAPIURL    string
+	openAPIMode   int
+	openAPIEnvKey string
+	openAPIBusy   bool
+	openAPIErr    string
+
+	curlOpen bool
+	curlText string
+	curlErr  string
 }
 
 func NewRoot(paths app.Paths, store *app.Store, tree app.Tree, env app.EnvState) *Root {
@@ -165,6 +177,8 @@ func (r *Root) View(c *ui.Context) {
 	r.envManager(c)
 	r.moveModal(c)
 	r.settingsModal(c)
+	r.openAPIDialog(c)
+	r.curlDialog(c)
 }
 
 func (r *Root) topBar(c *ui.Context) {
@@ -184,10 +198,10 @@ func (r *Root) topBar(c *ui.Context) {
 		if r.envName != before {
 			r.activateEnv(r.envName)
 		}
-		if ui.Button(c, "环境管理…").Clicked() {
+		if iconButton(c, iconSliders, "环境管理…").Clicked() {
 			r.openEnvManager()
 		}
-		if ui.Button(c, "设置").Clicked() {
+		if iconButton(c, iconSettings, "设置").Clicked() {
 			r.settingsOpen = true
 		}
 	})
@@ -208,15 +222,23 @@ func (r *Root) sidebar(c *ui.Context) {
 	ui.Column(c).Fill().Padding(6).Children(func() {
 		ui.Row(c).Gap(6).Children(func() {
 			ui.TextInput(c, &r.search).Placeholder("搜索请求 / URL").Grow(1)
-			ui.Button(c, "清空").Disabled(r.search == "").OnClick(func() { r.search = "" })
+			iconButtonPlain(c, iconX, "清空搜索").Disabled(r.search == "").OnClick(func() { r.search = "" })
 		})
 		ui.Row(c).Gap(6).Children(func() {
-			if ui.Button(c, "新建集合").Clicked() {
+			if iconButton(c, iconFolderPlus, "新建集合").Clicked() {
 				r.createCollection()
 			}
-			if ui.Button(c, "导入").Tooltip("导入 Postman Collection v2.1").Clicked() {
-				r.importPostmanDialog()
-			}
+			iconMenuButton(c, iconUpload, "导入", func(m *ui.Menu) {
+				if m.Item("Postman Collection…").Chosen() {
+					r.importPostmanDialog()
+				}
+				if m.Item("OpenAPI…").Chosen() {
+					r.openOpenAPIDialog()
+				}
+				if m.Item("cURL…").Chosen() {
+					r.openCurlDialog(c)
+				}
+			})
 			ui.Spacer(c)
 			ui.Text(c, fmt.Sprintf("%d 个请求", len(r.tree.Requests))).FontSize(11).TextColor(t.TextMuted)
 		})

@@ -184,9 +184,11 @@ api-z 使用自己的数据目录与 SQLite（WAL）：
 
 ### P4 互操作
 
-- OpenAPI 导入/刷新（`METHOD + normalized path` 合并，保留本地编辑）。
+- [x] OpenAPI 导入/刷新（`METHOD + normalized path` 合并，保留本地编辑，不删除已移除接口）。
 - `data/` 目录 Push/Pull（与 api-x 同构，Git 友好）。
-- curl 导入/导出、代码片段。
+- [x] cURL 导入（常见 flags、ANSI-C 引号、续行、Basic/Cookie/UA/Referer、`-G`）。
+- [ ] curl 导出 / 代码片段。
+- [x] 常用按钮图标化 + Z 应用图标。
 - api-x HAR 历史读取。
 
 ### P5 MCP

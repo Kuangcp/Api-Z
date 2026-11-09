@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"errors"
 	"flag"
 	"fmt"
@@ -14,6 +15,9 @@ import (
 	"api-z/app"
 	"api-z/ui"
 )
+
+//go:embed assets/icon-256.png
+var appIconPNG []byte
 
 func main() {
 	var (
@@ -99,6 +103,12 @@ func main() {
 			MinHeight: 600,
 			Content:   mygoui.View(root.View),
 		})
+		if err := win.SetIcon(appIconPNG); err != nil {
+			app.LogWarn("startup", "set window icon failed", "err", err.Error())
+		}
+		if mygo.App.Dock != nil {
+			_ = mygo.App.Dock.SetIcon(appIconPNG)
+		}
 		root.Attach(win)
 	})
 	if err := mygo.App.Run(); err != nil {

@@ -54,10 +54,13 @@ go run . -migrate \
 - 响应：Raw（虚拟化、自动跟随末尾）、Model（OpenAI/Responses delta 提取）、AG-UI（文本/工具调用/推理/中断卡片）、JSON 美化（只读高亮编辑器）。
 - 多标签，每个标签独立的编辑与流式响应状态；`Ctrl+Tab` 在最近两个标签间切换，`Ctrl+K` 全局搜索。
 - 设置：主题（跟随系统/浅色/深色 + 强调色）、快捷键可改键（录制、冲突替换、恢复默认），落盘 `theme.json` / `keymap.json`。
+- 图标：设置/新建集合/导入/清空/环境管理等使用 Lucide 图标按钮；应用图标为 `assets/icon.svg` 生成的 Z 图标（256/512 PNG）。
 - 默认快捷键：`Ctrl+Enter` 发送、`Ctrl+S` 保存、`Ctrl+K` 搜索、`Ctrl+Tab` 最近切换、`Ctrl+N` 新建请求、`Ctrl+W` 关闭标签、`Ctrl+,` 设置。
 - HAR 落盘与最近 10 次历史回看。
 - api-x 只读识别 + 一次性迁移（SQLite、environments.json、response artifacts）。
 - Postman Collection v2.1 导入/导出：嵌套文件夹、根请求、auth、禁用 Header、raw/urlencoded body、query/params、集合变量与描述；保留 `_api_x_id` 便于回导。
+- cURL 导入：粘贴 sh 风格 curl 命令（含 `-X/-H/-d/-u/-b/-A/-e/-G/--json`、`$'...'` 与续行），在当前选中集合/文件夹下创建请求。
+- OpenAPI 导入/刷新：`tags` → 文件夹、path/operation → 请求，支持 servers/环境变量 root、query/header 参数、JSON/multipart 示例；刷新按 `METHOD + normalized path` 合并，保留本地 URL/Headers/Params/Body/Auth，不删除服务端已移除的接口。
 
 ## 数据兼容
 
@@ -79,6 +82,6 @@ main.go -> ui -> app -> httpclient
 ## 已知限制
 
 - 原始超长行（>4096 字节）只显示截断，复制仍为全文。
-- 暂无：Multipart、代理 UI、OpenAPI 导入/刷新、MCP、工作流/压测、请求发送前预览、响应搜索。
+- 暂无：Multipart、代理 UI、MCP、工作流/压测、请求发送前预览、响应搜索、OpenAPI 请求体表单编辑。
 - AG-UI 的 `MESSAGES_SNAPSHOT` 只做基础还原；复杂 UI 组件（如自定义 interrupt UI）尚未渲染。
 - 历史回看只读 HAR，不支持重新执行。

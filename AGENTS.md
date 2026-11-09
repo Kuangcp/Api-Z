@@ -101,6 +101,10 @@ api-z 的存在理由就是这条链路。**不要退回全量字符串 + 每帧
 - 原始行用等宽字体、`SingleLine`、`clipLine`；AGUI 文本用分块 markdown。
 - 历史回看只读 HAR；不要假装支持重放。
 - Postman 导入/导出走 `app/postman.go` 的 `PortableCollection`；不要直接改 JSON 或复制 api-x 字段逻辑。导入生成新 id，导出保留 `_api_x_id` 供回导/合并；禁用 Header/query 用 `! ` 前缀；auth 为空/inherit 时导出省略。
+- cURL 解析走 `app/curl.go`（sh tokenizer、ANSI-C 引号、常见 flags）；UI 在 `ui/curl.go`。暂不支持 `-F/--form`，遇到应明确报错，不要静默生成错误请求。
+- 图标用 Lucide 描线，集中放在 `ui/icons.go`，通过 `iconButton` / `iconButtonPlain` / `iconMenuButton` 使用；图标按钮必须有 `Label`（读屏）和 `Tooltip`，禁止手写零散 SVG。
+- 应用图标源文件 `assets/icon.svg`，`tools/genicon.sh` 用 rsvg-convert 生成 `icon-128/256/512.png`；`main.go` 嵌入 256 图标。不要手改 PNG。
+- OpenAPI 解析/合并走 `app/openapi.go` + `app/openapi_store.go`：tag→folder、确定性 ID、`METHOD normalizePath` syncKey。刷新只 upsert，不删除；保留本地 URL/Headers/Params/Body/Auth，只更新 name/method/meta/folder/sort。文件夹 ID 不得跨集合复用。
 - 树/列表选中、hover、空态要有明确视觉；破坏性操作必须二次确认（`ui/tree_actions.go` 的删除弹窗）。
 - 树 CRUD 走 `app/store_crud.go`；UI 动作/弹窗在 `ui/tree_actions.go`，不要直接拼 SQL。
 - 多标签最近切换用 `Root.mru`（`Ctrl+Tab` 在最近两个之间切换）；全局搜索用 `Ctrl+K`。
@@ -130,6 +134,8 @@ api-z 的存在理由就是这条链路。**不要退回全量字符串 + 每帧
 - 移动：`TestStoreMoveNodeTo`（跨集合/子树更新/环检测）、`TestStoreMoveNodeBefore`（插入排序）、`TestMoveRequestToFolderUI` / `TestMoveFolderHidesSubtreeUI` / `TestDragRequestIntoFolderUI`。
 - 变量补全：`TestFindVarPrefixInsert`（前后缀/光标）、`TestVariableAutocompleteUI` / `TestVariableAutocompleteTextArea`（弹出/点击插入）、`TestVariableAutocompleteBodyEditor`（编辑器 completion）。
 - 设置：`TestChordParseFormat`、`TestResolveTheme`、`TestSettingsThemeAndKeymap`、`TestThemeResetsToSystem`。
+- OpenAPI：`TestParseOpenAPI`、`TestNormalizeOpenAPIPath`、`TestMergeOpenAPIPreservesLocalEdits`、`TestRefreshOpenAPICollection`、`TestOpenAPIImportAndRefreshUI`、`TestOpenAPIImportDialog`。
+- cURL：`TestParseCurlBasic`、`TestParseCurlAnsiCAndContinuation`、`TestParseCurlAuthCookieGet`、`TestParseCurlJSONMode`、`TestParseCurlErrors`、`TestCurlImportUI`、`TestCurlDialog`。
 - 修 bug 先写失败测试再改；不要用“看起来对”代替验证。
 - 测试不要依赖用户真实数据目录、网络或当前时间。
 
