@@ -261,6 +261,9 @@ func (r *Root) treeRow(c *ui.Context, row treeRow) {
 	btn.ContextMenu(func(m *ui.Menu) {
 		r.treeContextMenu(c, m, row)
 	})
+	kind, id := r.nodeIdentity(row)
+	attachTreeDrag(btn, kind, id)
+	r.attachTreeDrop(c, btn, row)
 }
 
 func rowLabel(row treeRow) string {

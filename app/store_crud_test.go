@@ -230,3 +230,58 @@ func TestStoreMoveNodeTo(t *testing.T) {
 		t.Fatalf("R2 cross-collection = %#v", req)
 	}
 }
+
+func TestStoreMoveNodeBefore(t *testing.T) {
+	paths := PathsAt(t.TempDir(), t.TempDir())
+	if err := paths.Ensure(); err != nil {
+		t.Fatal(err)
+	}
+	store, _ := OpenStore(paths.DBPath)
+	defer store.Close()
+	c, _ := store.CreateCollection("C")
+	f1, _ := store.CreateFolder(c, "", "F1")
+	f2, _ := store.CreateFolder(c, "", "F2")
+	f3, _ := store.CreateFolder(c, "", "F3")
+	r1, _ := store.CreateRequest(c, "", "R1")
+	r2, _ := store.CreateRequest(c, "", "R2")
+	r3, _ := store.CreateRequest(c, "", "R3")
+
+	order := func() []string {
+		tree, _ := store.LoadTree()
+		var ids []string
+		for _, req := range tree.Requests {
+			if req.CollectionID == c && req.FolderID == "" {
+				ids = append(ids, req.ID)
+			}
+		}
+		return ids
+	}
+	// R3 before R1.
+	if err := store.MoveNodeBefore(NodeRequest, r3, c, "", r1); err != nil {
+		t.Fatal(err)
+	}
+	if got := order(); len(got) != 3 || got[0] != r3 || got[1] != r1 || got[2] != r2 {
+		t.Fatalf("order = %v", got)
+	}
+	// R1 to the end.
+	if err := store.MoveNodeBefore(NodeRequest, r1, c, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	if got := order(); got[0] != r3 || got[1] != r2 || got[2] != r1 {
+		t.Fatalf("order end = %v", got)
+	}
+	// Folder reorder: F1 after F2.
+	if err := store.MoveNodeBefore(NodeFolder, f1, c, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	tree, _ := store.LoadTree()
+	var folders []string
+	for _, f := range tree.Folders {
+		if f.CollectionID == c && f.ParentID == "" {
+			folders = append(folders, f.ID)
+		}
+	}
+	if len(folders) != 3 || folders[0] != f2 || folders[1] != f3 || folders[2] != f1 {
+		t.Fatalf("folders = %v", folders)
+	}
+}

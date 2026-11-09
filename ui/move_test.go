@@ -89,3 +89,43 @@ func TestMoveFolderHidesSubtreeUI(t *testing.T) {
 	}
 	_ = child
 }
+
+func TestDragRequestIntoFolderUI(t *testing.T) {
+	paths := app.PathsAt(t.TempDir(), t.TempDir())
+	if err := paths.Ensure(); err != nil {
+		t.Fatal(err)
+	}
+	store, err := app.OpenStore(paths.DBPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	a, _ := store.CreateCollection("A")
+	f2, _ := store.CreateFolder(a, "", "F2")
+	r1, _ := store.CreateRequest(a, "", "R1")
+	_ = store.SaveRequest(app.Request{ID: r1, Name: "R1", Method: "GET", URL: "https://example.com/r1"})
+	tree, _ := store.LoadTree()
+	root := NewRoot(paths, store, tree, app.EnvState{Version: 1})
+	tt := ui.NewTester(root.View, 1200, 800)
+	tt.Frame()
+	src, ok := tt.Find("GET R1")
+	if !ok {
+		t.Fatalf("source row not found: %v", tt.Texts())
+	}
+	dst, ok := tt.Find("F2")
+	if !ok {
+		t.Fatalf("target row not found: %v", tt.Texts())
+	}
+	sx, sy := src.X+src.W/2, src.Y+src.H/2
+	dx, dy := dst.X+dst.W/2, dst.Y+dst.H/2
+	tt.Press(sx, sy)
+	tt.Move(sx+4, sy+4)
+	tt.Move(dx, dy)
+	tt.Release(dx, dy)
+	tt.Frame()
+	tree, _ = store.LoadTree()
+	req, _ := tree.Request(r1)
+	if req.FolderID != f2 {
+		t.Fatalf("drag drop folder = %q, want %q; texts=%v", req.FolderID, f2, tt.Texts())
+	}
+}

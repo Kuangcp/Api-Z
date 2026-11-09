@@ -483,3 +483,85 @@ func nextSortOrder(tx *sql.Tx, table, collectionID, parentID, parentColumn strin
 	}
 	return sort, err
 }
+
+// MoveNodeBefore reparents a node and inserts it before beforeID among its
+// new siblings (empty beforeID appends). It keeps the visible grouping: a
+// folder only orders among folders, a request among requests.
+func (s *Store) MoveNodeBefore(kind, id, collectionID, parentFolderID, beforeID string) error {
+	if beforeID == id {
+		return nil
+	}
+	if err := s.MoveNodeTo(kind, id, collectionID, parentFolderID); err != nil {
+		return err
+	}
+	return s.reorderSiblings(kind, collectionID, parentFolderID, id, beforeID)
+}
+
+func (s *Store) reorderSiblings(kind, collectionID, parentFolderID, id, beforeID string) error {
+	var table, parentColumn string
+	switch kind {
+	case NodeFolder:
+		table, parentColumn = "folders", "parent_folder_id"
+	case NodeRequest:
+		table, parentColumn = "requests", "folder_id"
+	default:
+		return fmt.Errorf("unknown node kind %q", kind)
+	}
+	query := `SELECT id FROM ` + table + ` WHERE collection_id = ? AND ` + parentColumn
+	args := []any{collectionID}
+	if parentFolderID == "" {
+		query += ` IS NULL`
+	} else {
+		query += ` = ?`
+		args = append(args, parentFolderID)
+	}
+	query += ` ORDER BY sort_order, id`
+	rows, err := s.db.Query(query, args...)
+	if err != nil {
+		return err
+	}
+	var ids []string
+	for rows.Next() {
+		var v string
+		if err := rows.Scan(&v); err != nil {
+			rows.Close()
+			return err
+		}
+		ids = append(ids, v)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	// Remove the moved node, then insert it at the requested place.
+	filtered := ids[:0]
+	for _, v := range ids {
+		if v != id {
+			filtered = append(filtered, v)
+		}
+	}
+	insertAt := len(filtered)
+	if beforeID != "" {
+		for i, v := range filtered {
+			if v == beforeID {
+				insertAt = i
+				break
+			}
+		}
+	}
+	filtered = append(filtered, "")
+	copy(filtered[insertAt+1:], filtered[insertAt:])
+	filtered[insertAt] = id
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	for i, v := range filtered {
+		if _, err := tx.Exec(`UPDATE `+table+` SET sort_order = ? WHERE id = ?`, i, v); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}

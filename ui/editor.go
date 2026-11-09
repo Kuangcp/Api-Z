@@ -46,6 +46,11 @@ type Editor struct {
 	jsonSource string
 	jsonEd     *editor.State
 
+	autoOpen  bool
+	autoField string
+	autoStart int
+	autoEnd   int
+
 	hist       *app.HARResponse
 	histLines  []string
 	histList   ui.ListState
@@ -84,6 +89,7 @@ func (ed *Editor) resetBodyEditor() {
 	buf := editor.NewBuffer(ed.Body)
 	buf.SetLanguage(editor.LanguageFor("body.json"))
 	ed.bodyEd = &editor.State{Buffer: buf}
+	ed.bodyEd.OnCompletion = ed.completeBody
 	ed.bodyVer = buf.Version()
 }
 
@@ -127,13 +133,19 @@ func (ed *Editor) requestPane(c *ui.Context) {
 		ui.Tabs(c, &ed.ReqTab, "Params", "Headers", "Body", "Auth")
 		switch ed.ReqTab {
 		case 0:
-			if ui.TextArea(c, &ed.Params).Grow(1).Font("monospace").Changed() {
+			area := ui.TextArea(c, &ed.Params).Grow(1).Font("monospace")
+			changed := area.Changed()
+			if changed {
 				ed.Dirty = true
 			}
+			ed.root.varAutocomplete(c, ed, "params", area, &ed.Params, changed)
 		case 1:
-			if ui.TextArea(c, &ed.Headers).Grow(1).Font("monospace").Changed() {
+			area := ui.TextArea(c, &ed.Headers).Grow(1).Font("monospace")
+			changed := area.Changed()
+			if changed {
 				ed.Dirty = true
 			}
+			ed.root.varAutocomplete(c, ed, "headers", area, &ed.Headers, changed)
 		case 2:
 			st := ed.bodyState()
 			editor.View(c, st).Grow(1).FillWidth()
@@ -157,9 +169,11 @@ func (ed *Editor) requestHeader(c *ui.Context) {
 			ed.Dirty = true
 		}
 		url := ui.TextInput(c, &ed.URL).Placeholder("https://{{host}}/api").Grow(1)
-		if url.Changed() {
+		urlChanged := url.Changed()
+		if urlChanged {
 			ed.Dirty = true
 		}
+		ed.root.varAutocomplete(c, ed, "url", url, &ed.URL, urlChanged)
 		if url.Submitted() {
 			ed.send()
 		}
