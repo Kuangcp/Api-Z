@@ -34,7 +34,11 @@ func TestEnvironmentManager(t *testing.T) {
 	tt := ui.NewTester(root.View, 1200, 800)
 	tt.Frame()
 
-	if err := tt.Click("环境管理…"); err != nil {
+	if err := tt.Click("Local"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if err := tt.Click("管理环境…"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()

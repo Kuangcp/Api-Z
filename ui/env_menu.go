@@ -85,6 +85,39 @@ func (r *Root) activateEnvID(id string) {
 
 // envMenu is the title-bar environment selector: tag | name on the button,
 // and a two-column cascade menu (tags left, environments right).
+const (
+	envMenuTagsWidth float32 = 150
+	envMenuGap       float32 = 4
+)
+
+// envMenuColumnWidth sizes the environment column to its longest name, so
+// short groups do not leave a wide empty strip on the right.
+func envMenuColumnWidth(envs []app.Environment, tag string) float32 {
+	longest := float32(0)
+	for _, env := range envs {
+		label := envNameWithoutTag(env.Name, tag)
+		w := float32(0)
+		for _, ch := range label {
+			if ch > 127 {
+				w += 13
+			} else {
+				w += 7.5
+			}
+		}
+		if w > longest {
+			longest = w
+		}
+	}
+	w := longest + 16 + 20 + 6
+	if w < 120 {
+		w = 120
+	}
+	if w > 240 {
+		w = 240
+	}
+	return w
+}
+
 func (r *Root) envMenu(c *ui.Context) {
 	t := c.Theme()
 	tag, name := "", "无环境"
@@ -116,10 +149,15 @@ func (r *Root) envMenu(c *ui.Context) {
 		r.envMenuOpen = !r.envMenuOpen
 	}
 	ui.PopoverBase(c, anchor, &r.envMenuOpen, func(panel ui.Element) {
+		// Align the environment column under the title-bar selector: shift
+		// the whole panel left by the tag column so the right column starts
+		// where the button does.
+		panel.AttachTo(anchor, ui.AnchorBottomStart, ui.AnchorTopStart).
+			MarginStart(-(envMenuTagsWidth + envMenuGap + 8))
 		panel.Background(t.Surface).Border(1, t.Border).Radius(8).Padding(4).
 			Children(func() {
-				ui.Row(c).Gap(4).Children(func() {
-					ui.Column(c).Width(160).Children(func() {
+				ui.Row(c).Gap(envMenuGap).AlignItems(ui.Start).Children(func() {
+					ui.Column(c).Width(envMenuTagsWidth).Children(func() {
 						ui.Scroll(c).MaxHeight(320).Children(func() {
 							groups := r.envGroups()
 							if len(groups) == 0 {
@@ -147,11 +185,23 @@ func (r *Root) envMenu(c *ui.Context) {
 							}
 						})
 						ui.Box(c).Height(1).Margin(4, 2).Background(t.Border)
-						if ui.Button(c, "无环境").Clicked() {
+						noEnv := ui.ButtonBase(c).Label("无环境").Justify(ui.Start).
+							Padding(4, 8).Radius(5).FillWidth()
+						noEnv.Children(func() { ui.Text(c, "无环境").FontSize(12.5).SingleLine() })
+						if noEnv.Hovered() {
+							noEnv.Background(t.SurfaceHover)
+						}
+						if noEnv.Clicked() {
 							r.activateEnvID("")
 							r.envMenuOpen = false
 						}
-						if ui.Button(c, "管理环境…").Clicked() {
+						manage := ui.ButtonBase(c).Label("管理环境…").Justify(ui.Start).
+							Padding(4, 8).Radius(5).FillWidth()
+						manage.Children(func() { ui.Text(c, "管理环境…").FontSize(12.5).SingleLine() })
+						if manage.Hovered() {
+							manage.Background(t.SurfaceHover)
+						}
+						if manage.Clicked() {
 							r.envMenuOpen = false
 							r.openEnvManager()
 						}
@@ -160,7 +210,7 @@ func (r *Root) envMenu(c *ui.Context) {
 						groups := r.envGroups()
 						if r.envGroup < len(groups) {
 							group := groups[r.envGroup]
-							ui.Column(c).Width(220).Children(func() {
+							ui.Column(c).Width(envMenuColumnWidth(group.Envs, group.Tag)).Children(func() {
 								ui.Scroll(c).MaxHeight(320).Children(func() {
 									for _, env := range group.Envs {
 										env := env
@@ -170,17 +220,17 @@ func (r *Root) envMenu(c *ui.Context) {
 											label = "(未命名)"
 										}
 										btn := ui.ButtonBase(c).Label(label).Justify(ui.Start).
-											Padding(4, 8).Radius(5)
+											Padding(7, 10).Radius(5).FillWidth()
 										if btn.Hovered() {
 											btn.Background(t.SurfaceHover)
 										}
 										btn.Children(func() {
 											if active {
-												ui.Text(c, "✓").FontSize(11).TextColor(t.Accent).Width(14)
+												ui.Text(c, "✓").FontSize(12).TextColor(t.Accent).Width(16)
 											} else {
-												ui.Box(c).Width(14)
+												ui.Box(c).Width(16)
 											}
-											ui.Text(c, label).FontSize(12).SingleLine()
+											ui.Text(c, label).FontSize(13.5).SingleLine()
 										})
 										if btn.Clicked() {
 											r.activateEnvID(env.ID)

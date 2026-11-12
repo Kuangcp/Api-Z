@@ -210,9 +210,6 @@ func (r *Root) titleBar(c *ui.Context) {
 		ui.Text(c, "Api-Z").FontSize(12.5).Bold()
 		ui.Spacer(c)
 		r.envMenu(c)
-		if iconButtonPlain(c, iconSliders, "环境管理…").Clicked() {
-			r.openEnvManager()
-		}
 		iconMenuButton(c, iconDatabase, "数据目录", func(m *ui.Menu) {
 			if m.Item("Push 到 data/").Chosen() {
 				r.pushDataDir()
