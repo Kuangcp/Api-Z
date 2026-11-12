@@ -1,6 +1,6 @@
 # Api-Z Roadmap
 
-更新：2026-11-08
+更新：2026-11-12
 定位：对标 [api-x](../Kotlin/api-x)（Kotlin + Compose Desktop）的本地优先 API 调试客户端，技术栈 Go + [mygo](https://github.com/egoist/mygo)。
 参考实现：`../db-g`（Go + mygo 数据库客户端）的分层、持久化、快捷键、headless 测试与性能约束。
 
@@ -167,13 +167,13 @@ api-z 使用自己的数据目录与 SQLite（WAL）：
 
 验收：真实 api-x 数据迁移后，任选请求完成「打开 → 发送 → 看响应 → 保存 → 重启恢复」。
 
-### P2 集合/环境/多标签（进行中：CRUD / 多标签 / 搜索已完成）
+### P2 集合/环境/多标签（已完成）
 
 - 集合/文件夹/请求 CRUD、拖拽排序、重命名、复制、删除。
 - 集合 Tab 切换：仅渲染当前集合的树；Tab 超出侧栏宽度时按最近使用保留、其余折叠进下拉菜单。
 - 多标签、最近请求切换（Ctrl+Tab）、全局搜索（Ctrl+K）。
 - 环境管理器（多环境、tag 分组）、变量自动补全。
-- 主题（浅/深/跟随系统）、字体、快捷键可改。
+- 主题（浅/深/跟随系统）、界面字体与缩放（90–125%）、快捷键可改。
 - Postman v2.1 导入/导出。
 
 ### P3 流式与 AI（核心已完成；TPOT / 树节点 loading 待补）
@@ -242,7 +242,8 @@ go run . -migrate -api-x-home ~/.local/share/api-x -data-dir /tmp/api-z-smoke
 - [ ] P1 补：JSON 折叠树、响应搜索、请求实际发送预览
 - [x] P2 第一批：集合/文件夹/请求 CRUD、重命名、复制、上下移动、级联删除、Ctrl+Tab、Ctrl+K
 - [x] P2 第二批：Postman v2.1 导入/导出
-- [x] P2 第四批：主题/快捷键设置
+- [x] P2 第三批：环境管理器（tag 分组）、变量自动补全、集合 Tab 切换
+- [x] P2 第四批：主题、界面字体与缩放、快捷键设置
 - [x] P3 核心：SSE 增量、Raw/Model/AGUI、工具/推理/中断卡片、600KB/万事件验证
 - [ ] P3 补：TPOT、树节点 loading、AG-UI 自定义 UI 组件
 - [ ] P4 OpenAPI、data/ Push/Pull、curl/代码片段

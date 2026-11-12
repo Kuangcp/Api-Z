@@ -2,6 +2,8 @@ package ui
 
 import (
 	"github.com/egoist/mygo/ui"
+
+	"api-z/app"
 )
 
 func (r *Root) settingsModal(c *ui.Context) {
@@ -11,10 +13,13 @@ func (r *Root) settingsModal(c *ui.Context) {
 	t := c.Theme()
 	ui.Modal(c, &r.settingsOpen, func() {
 		ui.Text(c, "设置").FontSize(15).Bold()
-		ui.Tabs(c, &r.settingsTab, "主题", "快捷键")
-		if r.settingsTab == 0 {
+		ui.Tabs(c, &r.settingsTab, "主题", "字体", "快捷键")
+		switch r.settingsTab {
+		case 0:
 			r.themeSettings(c, t)
-		} else {
+		case 1:
+			r.fontSettings(c, t)
+		default:
 			r.keymapSettings(c, t)
 		}
 		if r.settingsErr != "" {
@@ -67,6 +72,44 @@ func (r *Root) themeSettings(c *ui.Context, t *ui.Theme) {
 		ui.PrimaryButton(c, "主按钮")
 		ui.Button(c, "次按钮")
 		ui.Text(c, "文本示例").TextColor(t.Text)
+	})
+}
+
+func (r *Root) fontSettings(c *ui.Context, t *ui.Theme) {
+	ui.Text(c, "界面字体").FontSize(12).TextColor(t.TextMuted)
+	if ui.TextInput(c, &r.fontInput).
+		Placeholder("留空使用系统字体，如 Noto Sans CJK SC").
+		Label("界面字体").Changed() {
+		r.themePrefs.Font = r.fontInput
+		r.saveThemePrefs()
+	}
+	ui.Text(c, "字体名需与系统已安装字体一致；原始响应仍使用等宽字体。").
+		FontSize(11).TextColor(t.TextMuted)
+
+	ui.Text(c, "界面缩放").FontSize(12).TextColor(t.TextMuted)
+	idx := themeScaleIndex(r.themePrefs.Scale)
+	before := idx
+	ui.Segmented(c, &idx, "90%", "100%", "110%", "125%").Label("界面缩放")
+	if idx != before {
+		r.themePrefs.Scale = themeScaleSteps[idx]
+		r.saveThemePrefs()
+	}
+	ui.Text(c, "缩放同时放大字体、图标与控件，立即生效。").
+		FontSize(11).TextColor(t.TextMuted)
+
+	ui.Text(c, "预览").FontSize(12).TextColor(t.TextMuted)
+	ui.Row(c).Gap(8).Padding(12).Radius(8).Background(t.Surface).Children(func() {
+		ui.PrimaryButton(c, "主按钮")
+		ui.Button(c, "次按钮")
+		ui.Text(c, "正文示例：GET /users/{{id}}").TextColor(t.Text)
+	})
+	ui.Row(c).Gap(8).Children(func() {
+		if ui.Button(c, "恢复默认字体与缩放").Clicked() {
+			r.fontInput = ""
+			r.themePrefs.Font = ""
+			r.themePrefs.Scale = app.DefaultThemeScale
+			r.saveThemePrefs()
+		}
 	})
 }
 

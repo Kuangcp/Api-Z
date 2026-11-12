@@ -98,6 +98,7 @@ type Root struct {
 	themeKey     string
 	baseTheme    *ui.Theme
 	accentHex    string
+	fontInput    string
 
 	keymap      map[string]string
 	keymapPath  string
@@ -142,6 +143,7 @@ func NewRoot(paths app.Paths, store *app.Store, tree app.Tree, env app.EnvState)
 	r.envNames = envNames(env)
 	r.themePrefs = app.LoadThemePrefs(r.themePath)
 	r.accentHex = r.themePrefs.Accent
+	r.fontInput = r.themePrefs.Font
 	r.keymap = mergedKeymap(app.LoadKeymap(r.keymapPath))
 	r.ensureActiveCollection()
 	r.status = fmt.Sprintf("%d 个集合 · %d 个请求", len(tree.Collections), len(tree.Requests))

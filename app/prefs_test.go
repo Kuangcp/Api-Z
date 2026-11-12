@@ -9,7 +9,7 @@ import (
 func TestThemePrefsRoundTrip(t *testing.T) {
 	dir := t.TempDir()
 	path := ThemePath(dir)
-	p := ThemePrefs{Mode: 2, Accent: "#22c55e"}
+	p := ThemePrefs{Mode: 2, Accent: "#22c55e", Font: "Noto Sans CJK SC", Scale: 110}
 	if err := SaveThemePrefs(path, p); err != nil {
 		t.Fatal(err)
 	}
@@ -17,13 +17,25 @@ func TestThemePrefsRoundTrip(t *testing.T) {
 	if got != p {
 		t.Fatalf("got %#v", got)
 	}
+	if n := NormalizeThemePrefs(ThemePrefs{Scale: 10}); n.Scale != MinThemeScale {
+		t.Fatalf("low scale = %d", n.Scale)
+	}
+	if n := NormalizeThemePrefs(ThemePrefs{Scale: 500, Font: "  "}); n.Scale != MaxThemeScale || n.Font != "" {
+		t.Fatalf("high scale = %#v", n)
+	}
+	if err := SaveThemePrefs(path, ThemePrefs{Scale: 500}); err != nil {
+		t.Fatal(err)
+	}
+	if got := LoadThemePrefs(path); got.Scale != MaxThemeScale {
+		t.Fatalf("clamped scale = %d", got.Scale)
+	}
 	if err := SaveThemePrefs(path, ThemePrefs{Mode: 1, Accent: "red"}); err == nil {
 		t.Fatal("invalid accent accepted")
 	}
 	if err := os.WriteFile(path, []byte("{bad"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if got := LoadThemePrefs(path); got.Mode != 0 || got.Accent != "" {
+	if got := LoadThemePrefs(path); got.Mode != 0 || got.Accent != "" || got.Scale != DefaultThemeScale {
 		t.Fatalf("corrupt prefs = %#v", got)
 	}
 	if !ValidHex("#a1B2c3") || ValidHex("#xyzxyz") || ValidHex("a1b2c3") {

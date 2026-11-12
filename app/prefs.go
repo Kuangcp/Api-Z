@@ -9,10 +9,41 @@ import (
 )
 
 // ThemePrefs is persisted at <config>/theme.json. Mode: 0 system, 1 light,
-// 2 dark. Accent is "#rrggbb" or empty for the theme's own.
+// 2 dark. Accent is "#rrggbb" or empty for the theme's own. Font is a family
+// name or empty for the system's. Scale is the interface zoom in percent.
 type ThemePrefs struct {
 	Mode   int    `json:"mode"`
 	Accent string `json:"accent,omitempty"`
+	Font   string `json:"font,omitempty"`
+	Scale  int    `json:"scale,omitempty"`
+}
+
+// Theme scale bounds, in percent. Zero means the default.
+const (
+	DefaultThemeScale = 100
+	MinThemeScale     = 75
+	MaxThemeScale     = 150
+)
+
+// NormalizeThemePrefs fills defaults and clamps values Load and Save accept.
+func NormalizeThemePrefs(p ThemePrefs) ThemePrefs {
+	if p.Mode < 0 || p.Mode > 2 {
+		p.Mode = 0
+	}
+	if p.Accent != "" && !ValidHex(p.Accent) {
+		p.Accent = ""
+	}
+	p.Font = strings.TrimSpace(p.Font)
+	if p.Scale == 0 {
+		p.Scale = DefaultThemeScale
+	}
+	if p.Scale < MinThemeScale {
+		p.Scale = MinThemeScale
+	}
+	if p.Scale > MaxThemeScale {
+		p.Scale = MaxThemeScale
+	}
+	return p
 }
 
 func ThemePath(configDir string) string  { return filepath.Join(configDir, "theme.json") }
@@ -22,28 +53,19 @@ func LoadThemePrefs(path string) ThemePrefs {
 	var p ThemePrefs
 	b, err := os.ReadFile(path)
 	if err != nil {
-		return ThemePrefs{}
+		return NormalizeThemePrefs(ThemePrefs{})
 	}
 	if json.Unmarshal(b, &p) != nil {
-		return ThemePrefs{}
+		return NormalizeThemePrefs(ThemePrefs{})
 	}
-	if p.Mode < 0 || p.Mode > 2 {
-		p.Mode = 0
-	}
-	if p.Accent != "" && !ValidHex(p.Accent) {
-		p.Accent = ""
-	}
-	return p
+	return NormalizeThemePrefs(p)
 }
 
 func SaveThemePrefs(path string, p ThemePrefs) error {
-	if p.Mode < 0 || p.Mode > 2 {
-		p.Mode = 0
-	}
 	if p.Accent != "" && !ValidHex(p.Accent) {
 		return errors.New("强调色必须是 #rrggbb")
 	}
-	return writeJSON(path, p)
+	return writeJSON(path, NormalizeThemePrefs(p))
 }
 
 // KeymapPrefs maps action ids to chord strings such as "Ctrl+Enter". Only

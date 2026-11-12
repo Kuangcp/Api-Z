@@ -53,7 +53,7 @@ go run . -migrate \
 - 发送 / 取消 / 120s 超时；状态码、耗时、大小、TTFT、SSE 事件数。
 - 响应：Raw（虚拟化、自动跟随末尾）、Model（OpenAI/Responses delta 提取）、AG-UI（文本/工具调用/推理/中断卡片）、JSON 美化（只读高亮编辑器）。
 - 多标签，每个标签独立的编辑与流式响应状态；`Ctrl+Tab` 在最近两个标签间切换，`Ctrl+K` 全局搜索。
-- 设置：主题（跟随系统/浅色/深色 + 强调色）、快捷键可改键（录制、冲突替换、恢复默认），落盘 `theme.json` / `keymap.json`。
+- 设置：主题（跟随系统/浅色/深色 + 强调色）、界面字体与 90–125% 缩放、快捷键可改键（录制、冲突替换、恢复默认），落盘 `theme.json` / `keymap.json`。
 - 图标：设置/新建集合/导入/清空/环境管理等使用 Lucide 图标按钮；应用图标为 `assets/icon.svg` 生成的 Z 图标（256/512 PNG）。
 - 默认快捷键：`Ctrl+Enter` 发送、`Ctrl+S` 保存、`Ctrl+K` 搜索、`Ctrl+Tab` 最近切换、`Ctrl+N` 新建请求、`Ctrl+W` 关闭标签、`Ctrl+,` 设置。
 - HAR 落盘与最近 10 次历史回看。

@@ -19,11 +19,12 @@ func resolveTheme(base *ui.Theme, p app.ThemePrefs) *ui.Theme {
 	case 2:
 		base = ui.DarkTheme()
 	}
+	cp := *base
+	cp.Font = strings.TrimSpace(p.Font)
 	accent := strings.TrimSpace(p.Accent)
 	if accent == "" || !app.ValidHex(accent) {
-		return base
+		return &cp
 	}
-	cp := *base
 	col := ui.Hex(accent)
 	cp.Accent = col
 	cp.AccentHover = col.Mix(ui.RGB(255, 255, 255), 0.14)
@@ -38,12 +39,13 @@ func (r *Root) applyTheme(c *ui.Context) {
 		cp := *c.Theme()
 		r.baseTheme = &cp
 	}
-	key := fmt.Sprintf("%d|%s", r.themePrefs.Mode, r.themePrefs.Accent)
+	key := fmt.Sprintf("%d|%s|%s|%d", r.themePrefs.Mode, r.themePrefs.Accent, r.themePrefs.Font, r.themePrefs.Scale)
 	if key == r.themeKey {
 		return
 	}
 	r.themeKey = key
 	c.SetTheme(resolveTheme(r.baseTheme, r.themePrefs))
+	c.SetZoom(themeScaleFactor(r.themePrefs.Scale))
 }
 
 func (r *Root) saveThemePrefs() {
@@ -53,6 +55,7 @@ func (r *Root) saveThemePrefs() {
 		return
 	}
 	r.themePrefs.Accent = accent
+	r.themePrefs = app.NormalizeThemePrefs(r.themePrefs)
 	if err := app.SaveThemePrefs(r.themePath, r.themePrefs); err != nil {
 		r.settingsErr = "保存主题失败: " + err.Error()
 		return
@@ -62,7 +65,36 @@ func (r *Root) saveThemePrefs() {
 }
 
 func (r *Root) resetTheme() {
-	r.themePrefs = app.ThemePrefs{}
+	r.themePrefs.Mode = 0
+	r.themePrefs.Accent = ""
 	r.accentHex = ""
 	r.saveThemePrefs()
+}
+
+var themeScaleSteps = []int{90, 100, 110, 125}
+
+func themeScaleFactor(scale int) float32 {
+	if scale <= 0 {
+		scale = app.DefaultThemeScale
+	}
+	return float32(scale) / 100
+}
+
+// themeScaleIndex returns the step nearest to scale, so a hand-edited
+// theme.json still shows a sensible choice.
+func themeScaleIndex(scale int) int {
+	if scale <= 0 {
+		scale = app.DefaultThemeScale
+	}
+	best, bestDist := 0, 1<<30
+	for i, step := range themeScaleSteps {
+		dist := step - scale
+		if dist < 0 {
+			dist = -dist
+		}
+		if dist < bestDist {
+			best, bestDist = i, dist
+		}
+	}
+	return best
 }
