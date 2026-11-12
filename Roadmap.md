@@ -176,19 +176,20 @@ api-z 使用自己的数据目录与 SQLite（WAL）：
 - 主题（浅/深/跟随系统）、界面字体与缩放（90–125%）、快捷键可改。
 - Postman v2.1 导入/导出。
 
-### P3 流式与 AI（核心已完成；TPOT / 树节点 loading 待补）
+### P3 流式与 AI（已完成）
 
-- SSE 增量解析、事件计数、TTFT/TPOT。
+- SSE 增量解析、事件计数、TTFT/TPOT（HAR `_apiX.tpotText`）。
 - Raw / Model / AGUI 三视图；AGUI 文本、工具调用、推理、中断卡片。
-- 多请求并行时各自保留流状态；树节点 loading 标记。
+- 多请求并行时各自保留流状态；树节点运行中 Spinner。
+- AG-UI 自定义 `interrupt UI`、`MESSAGES_SNAPSHOT` 文本/工具/结果还原。
 - 600K/万事件基准与帧预算验证。
 
 ### P4 互操作
 
 - [x] OpenAPI 导入/刷新（`METHOD + normalized path` 合并，保留本地编辑，不删除已移除接口）。
-- `data/` 目录 Push/Pull（与 api-x 同构，Git 友好）。
+- [x] `data/` 目录 Push/Pull（与 api-x 同构，Git 友好；按 id 合并不删除）。
 - [x] cURL 导入（常见 flags、ANSI-C 引号、续行、Basic/Cookie/UA/Referer、`-G`）。
-- [ ] curl 导出 / 代码片段。
+- [x] curl 导出 / Raw HTTP 代码片段。
 - [x] 常用按钮图标化 + Z 应用图标。
 - api-x HAR 历史读取。
 
@@ -245,8 +246,8 @@ go run . -migrate -api-x-home ~/.local/share/api-x -data-dir /tmp/api-z-smoke
 - [x] P2 第三批：环境管理器（tag 分组）、变量自动补全、集合 Tab 切换
 - [x] P2 第四批：主题、界面字体与缩放、快捷键设置
 - [x] P3 核心：SSE 增量、Raw/Model/AGUI、工具/推理/中断卡片、600KB/万事件验证
-- [ ] P3 补：TPOT、树节点 loading、AG-UI 自定义 UI 组件
-- [ ] P4 OpenAPI、data/ Push/Pull、curl/代码片段
+- [x] P3 补：TPOT、树节点运行中标记、AG-UI 自定义 UI 组件、MESSAGES_SNAPSHOT
+- [x] P4 OpenAPI、data/ Push/Pull、curl/代码片段、api-x HAR 历史读取
 - [ ] P5 MCP（SSE / streamable HTTP / stdio）
 
 ### 已实测

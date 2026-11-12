@@ -35,6 +35,7 @@ type SessionSnapshot struct {
 	Headers     []string
 	DurationMS  int64
 	TTFTMS      int64
+	TPOTMS      int64
 	Bytes       int64
 	Events      int
 	LineCount   int
@@ -74,6 +75,8 @@ type Session struct {
 	started   time.Time
 	finished  time.Time
 	ttft      time.Duration
+	tpotSum   time.Duration
+	lastEvent time.Time
 	bytes     int64
 	events    int
 	spool     *os.File
@@ -137,6 +140,8 @@ func (s *Session) Start(spec httpclient.Spec) {
 	s.started = now
 	s.finished = time.Time{}
 	s.ttft = 0
+	s.tpotSum = 0
+	s.lastEvent = time.Time{}
 	s.bytes = 0
 	s.events = 0
 	s.lines = nil
@@ -226,6 +231,7 @@ func (s *Session) Snapshot() SessionSnapshot {
 		StatusText:  s.statusText,
 		DurationMS:  s.durationMS(),
 		TTFTMS:      s.ttft.Milliseconds(),
+		TPOTMS:      s.tpotMS(),
 		Bytes:       s.bytes,
 		Events:      s.events,
 		LineCount:   s.lineCount(),
@@ -282,6 +288,13 @@ func (s *Session) SpoolPath() string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.spoolPath
+}
+
+func (s *Session) tpotMS() int64 {
+	if s.events < 2 {
+		return 0
+	}
+	return (s.tpotSum / time.Duration(s.events-1)).Milliseconds()
 }
 
 func (s *Session) durationMS() int64 {
@@ -413,6 +426,7 @@ func (h *sessionHandler) OnDone(err error) {
 	isSSE := s.isSSE
 	spec := s.spec
 	ttft := s.ttft.Milliseconds()
+	tpot := s.tpotMS()
 	errMsg := s.errMsg
 	canceled := s.canceled
 	harPath := s.harPath
@@ -433,6 +447,7 @@ func (h *sessionHandler) OnDone(err error) {
 			Bytes:      bytes,
 			IsSSE:      isSSE,
 			TTFTMS:     ttft,
+			TPOTMS:     tpot,
 			EventCount: events,
 		}); err != nil {
 			LogWarn("har", "write failed", "request", s.id, "err", err.Error())
@@ -495,10 +510,20 @@ func (s *Session) partialLineLocked(line string, at time.Time) {
 }
 
 func (s *Session) applyEventLocked(ev httpclient.SSEEvent) {
+	at := ev.At
+	if at.IsZero() {
+		at = time.Now()
+	}
 	s.events++
 	if s.ttft == 0 {
-		s.ttft = time.Since(s.started)
+		s.ttft = at.Sub(s.started)
 	}
+	if !s.lastEvent.IsZero() {
+		if gap := at.Sub(s.lastEvent); gap > 0 {
+			s.tpotSum += gap
+		}
+	}
+	s.lastEvent = at
 	s.agui.Apply(ev)
 	s.model.Apply(ev)
 }

@@ -190,6 +190,14 @@ func (ed *Editor) requestHeader(c *ui.Context) {
 			ed.root.saveEditor(ed)
 			c.Toast("已保存")
 		}
+		ui.MenuButton(c, "代码", func(m *ui.Menu) {
+			if m.Item("复制为 cURL").Chosen() {
+				ed.copyAs(c, "cURL")
+			}
+			if m.Item("复制为 Raw HTTP").Chosen() {
+				ed.copyAs(c, "Raw HTTP")
+			}
+		}).Label("代码")
 		if ed.Dirty {
 			ui.Text(c, "●").FontSize(10).TextColor(t.Warning).Tooltip("有未保存的修改")
 		}
@@ -259,14 +267,8 @@ func setAuthValue(list *[]app.AuthProperty, key, value string) {
 	*list = append(*list, app.AuthProperty{Key: key, Value: value, Type: "string"})
 }
 
-func (ed *Editor) send() {
-	if ed.root == nil || ed.root.store == nil {
-		return
-	}
-	if err := ed.Save(); err != nil {
-		ed.root.err = err.Error()
-		return
-	}
+func (ed *Editor) buildSpec() httpclient.Spec {
+	ed.syncBody()
 	vars := ed.root.env.Map()
 	auth := ed.Auth
 	if strings.EqualFold(auth.Type, "inherit") || auth.Type == "" {
@@ -285,15 +287,26 @@ func (ed *Editor) send() {
 	for _, h := range headers {
 		hdr = append(hdr, httpclient.Header{Name: h.Name, Value: h.Value})
 	}
-	spec := httpclient.Spec{
+	return httpclient.Spec{
 		Method:         ed.Method,
 		URL:            url,
 		Headers:        hdr,
 		Body:           body,
 		RequestTimeout: 120 * time.Second,
 	}
+}
+
+func (ed *Editor) send() {
+	if ed.root == nil || ed.root.store == nil {
+		return
+	}
+	if err := ed.Save(); err != nil {
+		ed.root.err = err.Error()
+		return
+	}
+	spec := ed.buildSpec()
 	ed.root.err = ""
 	sess := ed.root.session(ed.ID)
 	sess.Start(spec)
-	ed.root.status = "请求中: " + ed.Method + " " + app.RedactURL(url)
+	ed.root.status = "请求中: " + ed.Method + " " + app.RedactURL(spec.URL)
 }

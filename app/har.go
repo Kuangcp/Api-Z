@@ -24,6 +24,7 @@ type HARInput struct {
 	Bytes      int64
 	IsSSE      bool
 	TTFTMS     int64
+	TPOTMS     int64
 	EventCount int
 }
 
@@ -156,6 +157,7 @@ func WriteHAR(path string, in HARInput) error {
 			RequestHeadersFullText: strings.Join(fullHeaders, "\n"),
 			RequestBodyText:        string(in.Spec.Body),
 			TTFTText:               formatOptionalMS(in.TTFTMS),
+			TPOTText:               formatOptionalMS(in.TPOTMS),
 		},
 		Pages: []any{},
 		Entries: []harEntry{{
@@ -249,6 +251,7 @@ type HARResponse struct {
 	DurationMS int64
 	SizeBytes  int64
 	TTFTMS     int64
+	TPOTMS     int64
 	EventCount int
 	HARPath    string
 }
@@ -278,5 +281,30 @@ func ReadHARResponse(path string) (HARResponse, error) {
 		}
 	}
 	out.EventCount = parseEventText(doc.Log.APIX.ResponseSSEEventCount)
+	out.TTFTMS = parseDurationText(doc.Log.APIX.TTFTText)
+	out.TPOTMS = parseDurationText(doc.Log.APIX.TPOTText)
 	return out, nil
+}
+
+// parseDurationText reads the "123ms" / "1.25s" texts api-x writes in HAR.
+func parseDurationText(s string) int64 {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0
+	}
+	if strings.HasSuffix(s, "ms") {
+		v, err := strconv.ParseFloat(strings.TrimSuffix(s, "ms"), 64)
+		if err != nil {
+			return 0
+		}
+		return int64(v)
+	}
+	if strings.HasSuffix(s, "s") {
+		v, err := strconv.ParseFloat(strings.TrimSuffix(s, "s"), 64)
+		if err != nil {
+			return 0
+		}
+		return int64(v * 1000)
+	}
+	return 0
 }

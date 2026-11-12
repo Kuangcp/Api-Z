@@ -3,6 +3,8 @@ package app
 import (
 	"strings"
 	"testing"
+
+	"api-z/httpclient"
 )
 
 func TestParseCurlBasic(t *testing.T) {
@@ -76,5 +78,39 @@ func TestCurlRequestName(t *testing.T) {
 	r := CurlRequest{URL: "https://api.test/v1/pets?x=1"}
 	if got := CurlRequestName(r); got != "api.test/v1/pets" {
 		t.Fatalf("name = %q", got)
+	}
+}
+
+func TestFormatCurlRoundTrip(t *testing.T) {
+	spec := httpclient.Spec{
+		Method: "POST",
+		URL:    "https://example.com/api?q=a+b",
+		Headers: []httpclient.Header{
+			{Name: "Content-Type", Value: "application/json"},
+			{Name: "Authorization", Value: "Bearer tok"},
+		},
+		Body: []byte(`{"msg":"it's ok"}`),
+	}
+	cmd := FormatCurl(spec)
+	if !strings.Contains(cmd, `it'\''s`) {
+		t.Fatalf("single quote not escaped: %s", cmd)
+	}
+	parsed, err := ParseCurl(cmd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if parsed.Method != "POST" || parsed.URL != spec.URL || parsed.BodyText != string(spec.Body) {
+		t.Fatalf("parsed = %#v", parsed)
+	}
+	if !strings.Contains(parsed.HeadersText, "Authorization: Bearer tok") {
+		t.Fatalf("headers = %q", parsed.HeadersText)
+	}
+
+	raw := FormatHTTP(spec)
+	if !strings.HasPrefix(raw, "POST /api?q=a+b HTTP/1.1\nHost: example.com\n") {
+		t.Fatalf("raw = %q", raw)
+	}
+	if strings.Count(raw, "Host:") != 1 {
+		t.Fatalf("host duplicated: %q", raw)
 	}
 }

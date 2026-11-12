@@ -92,6 +92,9 @@ func (ed *Editor) responseToolbar(c *ui.Context, sess *app.Session, snap app.Ses
 			if snap.TTFTMS > 0 {
 				ui.Text(c, fmt.Sprintf("TTFT %dms", snap.TTFTMS)).FontSize(11).TextColor(t.TextMuted)
 			}
+			if snap.TPOTMS > 0 {
+				ui.Text(c, fmt.Sprintf("TPOT %dms", snap.TPOTMS)).FontSize(11).TextColor(t.TextMuted)
+			}
 		}
 		if snap.Truncated {
 			ui.Text(c, "已截断显示").FontSize(11).TextColor(t.Warning)
@@ -161,6 +164,12 @@ func (ed *Editor) historyPane(c *ui.Context) {
 			ui.Text(c, app.FormatBytes(resp.SizeBytes)).FontSize(11).TextColor(t.TextMuted)
 			if resp.IsSSE {
 				ui.Text(c, fmt.Sprintf("Event %d", resp.EventCount)).FontSize(11).TextColor(t.TextMuted)
+			}
+			if resp.TTFTMS > 0 {
+				ui.Text(c, fmt.Sprintf("TTFT %dms", resp.TTFTMS)).FontSize(11).TextColor(t.TextMuted)
+			}
+			if resp.TPOTMS > 0 {
+				ui.Text(c, fmt.Sprintf("TPOT %dms", resp.TPOTMS)).FontSize(11).TextColor(t.TextMuted)
 			}
 			ui.Box(c).Grow(1)
 			if ui.Button(c, "JSON").Clicked() {
@@ -365,12 +374,27 @@ func (ed *Editor) aguiRow(c *ui.Context, row aguiRow, running bool) {
 		})
 	case httpclient.AguiInterrupt:
 		ui.Column(c).Padding(10).Radius(8).Border(1, t.Warning).Gap(4).Children(func() {
-			ui.Text(c, "中断").FontSize(10.5).Bold().TextColor(t.Warning)
-			if m.ToolName != "" {
-				ui.Text(c, "工具: "+m.ToolName).FontSize(12)
-			}
+			ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+				ui.Text(c, "中断").FontSize(10.5).Bold().TextColor(t.Warning)
+				if m.Reason != "" {
+					ui.Text(c, "· "+m.Reason).FontSize(10.5).TextColor(t.TextMuted)
+				}
+				if m.ToolName != "" {
+					ui.Text(c, "· "+m.ToolName).FontSize(10.5).TextColor(t.Accent)
+				}
+			})
 			if m.Text != "" {
 				ui.Text(c, m.Text).FontSize(12).Selectable()
+			}
+			if m.UIType != "" || m.UIContent != "" {
+				ui.Text(c, "UI 组件").FontSize(10.5).TextColor(t.TextMuted)
+				if m.UIType != "" {
+					ui.Text(c, m.UIType).FontSize(11).Bold().TextColor(t.Warning)
+				}
+				if m.UIContent != "" {
+					ui.Text(c, truncate(m.UIContent, 32_000)).Font("monospace").FontSize(11.5).
+						Selectable().TextColor(t.Text)
+				}
 			}
 		})
 	}

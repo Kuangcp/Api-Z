@@ -34,6 +34,9 @@ type AguiMessage struct {
 	ToolName   string
 	Args       string
 	Result     string
+	Reason     string
+	UIType     string
+	UIContent  string
 	DurationMS int64
 	Complete   bool
 }
@@ -56,6 +59,9 @@ type aguiMessage struct {
 	toolName   string
 	args       strings.Builder
 	result     strings.Builder
+	reason     string
+	uiType     string
+	uiContent  string
 	startedAt  time.Time
 	durationMS int64
 	complete   bool
@@ -111,6 +117,9 @@ func (s *AguiState) Snapshot() AguiSnapshot {
 			ToolName:   m.toolName,
 			Args:       m.args.String(),
 			Result:     m.result.String(),
+			Reason:     m.reason,
+			UIType:     m.uiType,
+			UIContent:  m.uiContent,
 			DurationMS: m.durationMS,
 			Complete:   m.complete,
 		})
@@ -157,15 +166,15 @@ func (s *AguiState) Apply(ev SSEEvent) {
 					md, _ := ir["metadata"].(map[string]any)
 					ui, _ := md["ui"].(map[string]any)
 					s.messages = append(s.messages, &aguiMessage{
-						kind:     AguiInterrupt,
-						id:       str(ir["id"]),
-						text:     builder(str(ir["message"])),
-						toolName: str(md["toolName"]),
-						toolCallID: func() string {
-							_ = ui
-							return str(md["toolCallId"])
-						}(),
-						complete: true,
+						kind:       AguiInterrupt,
+						id:         str(ir["id"]),
+						text:       builder(str(ir["message"])),
+						toolName:   str(md["toolName"]),
+						toolCallID: str(md["toolCallId"]),
+						reason:     str(ir["reason"]),
+						uiType:     str(ui["type"]),
+						uiContent:  contentText(ui["content"]),
+						complete:   true,
 					})
 				}
 			}
@@ -273,20 +282,176 @@ func (s *AguiState) Apply(ev SSEEvent) {
 	case "MESSAGES_SNAPSHOT":
 		s.finishText()
 		s.finishReasoning()
+		s.pendingText = nil
+		s.pendingReasoning = nil
+		s.pendingToolByID = map[string]*aguiMessage{}
 		s.messages = s.messages[:0]
 		if list, ok := obj["messages"].([]any); ok {
 			for _, item := range list {
-				m, _ := item.(map[string]any)
-				text := textOf(m["content"])
-				s.messages = append(s.messages, &aguiMessage{
-					kind:     AguiText,
-					id:       str(m["id"]),
-					role:     defaultStr(str(m["role"]), "assistant"),
-					text:     builder(text),
-					complete: true,
-				})
+				if m, ok := item.(map[string]any); ok {
+					s.messages = append(s.messages, snapshotMessages(m)...)
+				}
 			}
 		}
+	}
+}
+
+// snapshotMessages rebuilds one MESSAGES_SNAPSHOT entry, keeping text,
+// reasoning, tool calls and tool results instead of flattening them.
+func snapshotMessages(m map[string]any) []*aguiMessage {
+	id := str(m["id"])
+	role := defaultStr(str(m["role"]), "assistant")
+	parts, _ := m["content"].([]any)
+	var out []*aguiMessage
+	var text strings.Builder
+	flushText := func() {
+		if text.Len() == 0 {
+			return
+		}
+		out = append(out, &aguiMessage{
+			kind:     AguiText,
+			id:       id,
+			role:     role,
+			text:     builder(text.String()),
+			complete: true,
+		})
+		text.Reset()
+	}
+	for _, raw := range parts {
+		part, _ := raw.(map[string]any)
+		if part == nil {
+			continue
+		}
+		switch defaultStr(str(part["type"]), "text") {
+		case "text", "text_delta":
+			text.WriteString(str(part["text"]))
+		case "reasoning", "thinking", "reasoning_text":
+			flushText()
+			out = append(out, &aguiMessage{
+				kind:     AguiReasoning,
+				id:       id,
+				role:     role,
+				text:     builder(contentText(part["text"])),
+				complete: true,
+			})
+		case "tool-call", "tool_call", "function_call":
+			flushText()
+			callID := defaultStr(str(part["toolCallId"]), str(part["id"]))
+			name := defaultStr(str(part["toolName"]), str(part["name"]))
+			args := contentText(part["args"])
+			if args == "" {
+				args = contentText(part["arguments"])
+			}
+			out = append(out, &aguiMessage{
+				kind:       AguiToolCall,
+				id:         id,
+				role:       role,
+				toolCallID: callID,
+				toolName:   name,
+				args:       builder(args),
+				complete:   true,
+			})
+		case "tool-result", "tool_result":
+			flushText()
+			callID := str(part["toolCallId"])
+			result := contentText(part["result"])
+			if result == "" {
+				result = contentText(part["content"])
+			}
+			out = append(out, &aguiMessage{
+				kind:       AguiToolCall,
+				id:         id,
+				role:       role,
+				toolCallID: callID,
+				result:     builder(result),
+				complete:   true,
+			})
+		default:
+			text.WriteString(contentText(part["text"]))
+		}
+	}
+	if parts == nil && role != "tool" {
+		text.WriteString(contentText(m["content"]))
+	}
+	flushText()
+	// OpenAI-style tool_calls complement a plain content string.
+	if calls, ok := m["toolCalls"].([]any); ok {
+		out = append(out, snapshotToolCalls(id, role, calls)...)
+	}
+	if calls, ok := m["tool_calls"].([]any); ok {
+		out = append(out, snapshotToolCalls(id, role, calls)...)
+	}
+	if len(out) > 0 {
+		return out
+	}
+	content := contentText(m["content"])
+	callID := str(m["toolCallId"])
+	if callID == "" {
+		callID = str(m["tool_call_id"])
+	}
+	if content == "" && role == "tool" {
+		content = contentText(m["result"])
+	}
+	if role == "tool" {
+		return []*aguiMessage{{
+			kind:       AguiToolCall,
+			id:         id,
+			role:       role,
+			toolCallID: callID,
+			result:     builder(content),
+			complete:   true,
+		}}
+	}
+	return []*aguiMessage{{
+		kind:       AguiText,
+		id:         id,
+		role:       role,
+		text:       builder(content),
+		toolCallID: callID,
+		complete:   true,
+	}}
+}
+
+func snapshotToolCalls(messageID, role string, calls []any) []*aguiMessage {
+	out := make([]*aguiMessage, 0, len(calls))
+	for _, raw := range calls {
+		call, _ := raw.(map[string]any)
+		if call == nil {
+			continue
+		}
+		fn, _ := call["function"].(map[string]any)
+		name := defaultStr(str(call["name"]), str(fn["name"]))
+		args := contentText(call["args"])
+		if args == "" {
+			args = contentText(fn["arguments"])
+		}
+		out = append(out, &aguiMessage{
+			kind:       AguiToolCall,
+			id:         messageID,
+			role:       role,
+			toolCallID: defaultStr(str(call["id"]), str(call["toolCallId"])),
+			toolName:   name,
+			args:       builder(args),
+			complete:   true,
+		})
+	}
+	return out
+}
+
+// contentText stringifies a snapshot content value: plain text stays as is,
+// objects and arrays are kept as JSON rather than dropped.
+func contentText(v any) string {
+	switch x := v.(type) {
+	case nil:
+		return ""
+	case string:
+		return x
+	default:
+		b, err := json.Marshal(x)
+		if err != nil {
+			return ""
+		}
+		return string(b)
 	}
 }
 

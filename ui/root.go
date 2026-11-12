@@ -64,7 +64,6 @@ type Root struct {
 	editorPercent float32
 	status        string
 	err           string
-	migratedFrom  string
 
 	dialog     dialogKind
 	dialogOpen bool
@@ -130,7 +129,6 @@ func NewRoot(paths app.Paths, store *app.Store, tree app.Tree, env app.EnvState)
 		env:           env.Normalize(),
 		sidebarWidth:  300,
 		editorPercent: 52,
-		migratedFrom:  store.Meta("migrated_from"),
 		themePath:     app.ThemePath(paths.ConfigDir),
 		keymapPath:    app.KeymapPath(paths.ConfigDir),
 	}
@@ -171,10 +169,6 @@ func (r *Root) View(c *ui.Context) {
 				ui.Text(c, r.err).FontSize(11.5).TextColor(t.Danger).SingleLine().MaxWidth(500).Tooltip(r.err)
 				ui.Spacer(c)
 			}
-			if src := r.migratedFrom; src != "" {
-				ui.Text(c, "数据迁移自 api-x").FontSize(11.5).TextColor(t.TextMuted).
-					Tooltip(src)
-			}
 			ui.Text(c, r.paths.DataDir).FontSize(11.5).TextColor(t.TextMuted).SingleLine()
 		})
 	})
@@ -207,6 +201,14 @@ func (r *Root) topBar(c *ui.Context) {
 		if iconButton(c, iconSliders, "环境管理…").Clicked() {
 			r.openEnvManager()
 		}
+		iconMenuButton(c, iconDatabase, "数据目录", func(m *ui.Menu) {
+			if m.Item("Push 到 data/").Chosen() {
+				r.pushDataDir()
+			}
+			if m.Item("从 data/ Pull").Chosen() {
+				r.pullDataDir()
+			}
+		})
 		if iconButton(c, iconSettings, "设置").Clicked() {
 			r.settingsOpen = true
 		}
@@ -298,7 +300,11 @@ func (r *Root) treeRow(c *ui.Context, row treeRow) {
 			}
 			ui.Text(c, row.name).FontSize(12.5).SingleLine().Grow(1)
 		case rowRequest:
-			ui.Text(c, " ").FontSize(10)
+			if r.requestRunning(row.id) {
+				ui.Spinner(c).FontSize(11).Label("请求中")
+			} else {
+				ui.Text(c, " ").FontSize(10)
+			}
 			ui.Text(c, row.method).FontSize(9.5).Bold().TextColor(methodColor(c, row.method)).Width(42)
 			ui.Text(c, row.name).FontSize(12.5).SingleLine().Grow(1)
 		}
@@ -469,6 +475,11 @@ func (r *Root) openRequest(id string) {
 	r.active = len(r.tabs) - 1
 	r.selected = id
 	r.touchMRU(id)
+}
+
+func (r *Root) requestRunning(id string) bool {
+	s := r.sessions[id]
+	return s != nil && s.Running()
 }
 
 func (r *Root) session(id string) *app.Session {

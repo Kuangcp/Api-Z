@@ -189,3 +189,21 @@ func TestSessionManyEvents(t *testing.T) {
 		t.Fatalf("10k events took %s", elapsed)
 	}
 }
+
+func TestReadHARResponseTimings(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "hist.har")
+	doc := `{"log":{"version":"1.2","creator":{"name":"api-x","version":"1"},"_apiX":{"isSseResponse":true,"responseSseEventCountText":"Event 10","ttftText":"1.25s","tpotText":"120ms"},"entries":[{"time":2000,"request":{"method":"GET","url":"https://example.com","headers":[]},"response":{"status":200,"statusText":"OK","headers":[],"content":{"size":4,"mimeType":"text/event-stream","text":"data"}}}]}}`
+	if err := os.WriteFile(path, []byte(doc), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	resp, err := ReadHARResponse(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.TTFTMS != 1250 || resp.TPOTMS != 120 || resp.EventCount != 10 {
+		t.Fatalf("timings = %#v", resp)
+	}
+	if got := parseDurationText("1.5s"); got != 1500 {
+		t.Fatalf("parse 1.5s = %d", got)
+	}
+}

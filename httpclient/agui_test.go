@@ -66,13 +66,51 @@ func TestAguiIncremental(t *testing.T) {
 
 func TestAguiInterrupt(t *testing.T) {
 	st := NewAguiState()
-	st.Apply(SSEEvent{Data: `{"type":"RUN_FINISHED","outcome":{"type":"interrupt","interrupts":[{"id":"i1","reason":"confirm","message":"continue?","metadata":{"toolName":"deploy"}}]}}`})
+	st.Apply(SSEEvent{Data: `{"type":"RUN_FINISHED","outcome":{"type":"interrupt","interrupts":[{"id":"i1","reason":"confirm","message":"continue?","metadata":{"toolName":"deploy","ui":{"type":"form","content":"{\"field\":\"env\"}"}}}]}}`})
 	snap := st.Snapshot()
 	if snap.Status != AguiInterrupted {
 		t.Fatalf("status = %q", snap.Status)
 	}
 	if len(snap.Messages) != 1 || snap.Messages[0].Kind != AguiInterrupt || snap.Messages[0].ToolName != "deploy" {
 		t.Fatalf("messages = %#v", snap.Messages)
+	}
+	m := snap.Messages[0]
+	if m.Reason != "confirm" || m.UIType != "form" || m.UIContent != `{"field":"env"}` {
+		t.Fatalf("interrupt ui = %#v", m)
+	}
+}
+
+func TestAguiMessagesSnapshot(t *testing.T) {
+	st := NewAguiState()
+	st.Apply(SSEEvent{Data: `{"type":"MESSAGES_SNAPSHOT","messages":[` +
+		`{"id":"u1","role":"user","content":"hi"},` +
+		`{"id":"a1","role":"assistant","content":[{"type":"text","text":"calling"},{"type":"tool-call","toolCallId":"tc1","toolName":"search","args":{"q":"go"}}]},` +
+		`{"id":"t1","role":"tool","toolCallId":"tc1","content":"result-ok"}]}`})
+	snap := st.Snapshot()
+	if len(snap.Messages) != 4 {
+		t.Fatalf("messages = %d: %#v", len(snap.Messages), snap.Messages)
+	}
+	if snap.Messages[0].Role != "user" || snap.Messages[0].Text != "hi" {
+		t.Fatalf("user = %#v", snap.Messages[0])
+	}
+	if snap.Messages[1].Text != "calling" {
+		t.Fatalf("assistant text = %#v", snap.Messages[1])
+	}
+	tc := snap.Messages[2]
+	if tc.Kind != AguiToolCall || tc.ToolCallID != "tc1" || tc.ToolName != "search" || tc.Args != `{"q":"go"}` {
+		t.Fatalf("tool call = %#v", tc)
+	}
+	res := snap.Messages[3]
+	if res.Kind != AguiToolCall || res.ToolCallID != "tc1" || res.Result != "result-ok" {
+		t.Fatalf("tool result = %#v", res)
+	}
+
+	// OpenAI-style tool_calls with a plain content string keep both.
+	st.Apply(SSEEvent{Data: `{"type":"MESSAGES_SNAPSHOT","messages":[{"id":"a2","role":"assistant","content":"done",` +
+		`"tool_calls":[{"id":"tc2","type":"function","function":{"name":"ping","arguments":"{}"}}]}]}`})
+	snap = st.Snapshot()
+	if len(snap.Messages) != 2 || snap.Messages[0].Text != "done" || snap.Messages[1].ToolName != "ping" {
+		t.Fatalf("tool_calls snapshot = %#v", snap.Messages)
 	}
 }
 

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+
+	"api-z/httpclient"
 )
 
 type CurlRequest struct {
@@ -352,4 +354,77 @@ func parseHex(s string) (int, bool) {
 
 func isHex(b byte) bool {
 	return b >= '0' && b <= '9' || b >= 'a' && b <= 'f' || b >= 'A' && b <= 'F'
+}
+
+// FormatCurl renders a request spec as a runnable sh-style curl command.
+// Headers are reproduced as sent, including auth injected by the request.
+func FormatCurl(spec httpclient.Spec) string {
+	var b strings.Builder
+	b.WriteString("curl -X ")
+	b.WriteString(strings.ToUpper(defaultStr(spec.Method, "GET")))
+	b.WriteString(" ")
+	b.WriteString(shellQuote(spec.URL))
+	for _, h := range spec.Headers {
+		b.WriteString(" \\\n  -H ")
+		b.WriteString(shellQuote(h.Name + ": " + h.Value))
+	}
+	if len(spec.Body) > 0 {
+		b.WriteString(" \\\n  --data-raw ")
+		b.WriteString(shellQuote(string(spec.Body)))
+	}
+	return b.String()
+}
+
+// FormatHTTP renders the request as a raw HTTP/1.1 message, for docs and
+// other HTTP clients.
+func FormatHTTP(spec httpclient.Spec) string {
+	method := strings.ToUpper(defaultStr(spec.Method, "GET"))
+	u, err := url.Parse(spec.URL)
+	target := spec.URL
+	host := ""
+	if err == nil {
+		host = u.Host
+		target = u.RequestURI()
+		if target == "" {
+			target = "/"
+		}
+	}
+	var b strings.Builder
+	b.WriteString(method)
+	b.WriteString(" ")
+	b.WriteString(target)
+	b.WriteString(" HTTP/1.1\n")
+	if host != "" {
+		hasHost := false
+		for _, h := range spec.Headers {
+			if strings.EqualFold(h.Name, "Host") {
+				hasHost = true
+			}
+		}
+		if !hasHost {
+			b.WriteString("Host: ")
+			b.WriteString(host)
+			b.WriteByte('\n')
+		}
+	}
+	for _, h := range spec.Headers {
+		b.WriteString(h.Name)
+		b.WriteString(": ")
+		b.WriteString(h.Value)
+		b.WriteByte('\n')
+	}
+	b.WriteByte('\n')
+	b.Write(spec.Body)
+	return b.String()
+}
+
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
+}
+
+func defaultStr(v, fallback string) string {
+	if v == "" {
+		return fallback
+	}
+	return v
 }
