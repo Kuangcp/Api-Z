@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"bytes"
+	"encoding/json"
 	"strings"
 	"time"
 
@@ -30,6 +32,9 @@ type Editor struct {
 
 	bodyEd  *editor.State
 	bodyVer uint64
+
+	paramsKV  kvState
+	headersKV kvState
 
 	StreamMode int
 	RawList    ui.ListState
@@ -81,6 +86,8 @@ func NewEditor(root *Root, req app.Request) *Editor {
 		Auth:     app.ParseAuth(req.MetaJSON),
 		md:       markdown.Options{},
 	}
+	ed.paramsKV.Mode = 1
+	ed.headersKV.Mode = 1
 	ed.resetBodyEditor()
 	return ed
 }
@@ -133,20 +140,11 @@ func (ed *Editor) requestPane(c *ui.Context) {
 		ui.Tabs(c, &ed.ReqTab, "Params", "Headers", "Body", "Auth")
 		switch ed.ReqTab {
 		case 0:
-			area := ui.TextArea(c, &ed.Params).Grow(1).Font("monospace")
-			changed := area.Changed()
-			if changed {
-				ed.Dirty = true
-			}
-			ed.root.varAutocomplete(c, ed, "params", area, &ed.Params, changed)
+			ed.root.kvEditor(c, ed, "params", "每行 key: value；`! ` 前缀禁用；与 URL 中已有 query 用 & 合并。", &ed.Params, &ed.paramsKV)
 		case 1:
-			area := ui.TextArea(c, &ed.Headers).Grow(1).Font("monospace")
-			changed := area.Changed()
-			if changed {
-				ed.Dirty = true
-			}
-			ed.root.varAutocomplete(c, ed, "headers", area, &ed.Headers, changed)
+			ed.root.kvEditor(c, ed, "headers", "每行 Name: Value；`! ` 前缀只编辑不发送。", &ed.Headers, &ed.headersKV)
 		case 2:
+			ed.bodyToolbar(c)
 			st := ed.bodyState()
 			editor.View(c, st).Grow(1).FillWidth()
 			if st.Buffer.Version() != ed.bodyVer {
@@ -216,18 +214,43 @@ func (ed *Editor) authPane(c *ui.Context) {
 		})
 		switch ed.Auth.Type {
 		case "inherit":
-			ui.Text(c, "继承集合 / 文件夹的认证；发送时解析。").TextColor(t.TextMuted)
+			eff := ed.root.tree.EffectiveAuth(ed.ID)
+			label := authTypeLabel(eff.Type)
+			if eff.Type == "" || eff.Type == "inherit" {
+				ui.Text(c, "父级未配置认证，发送时不会附加认证头。").
+					FontSize(12).TextColor(t.TextMuted)
+			} else {
+				ui.Text(c, "继承自集合 / 文件夹："+label).FontSize(12).TextColor(t.TextMuted)
+				ui.Text(c, "发送时自动注入；切换到其他类型可覆盖。").
+					FontSize(11).TextColor(t.TextMuted)
+			}
 		case "noauth":
-			ui.Text(c, "不附加认证头。").TextColor(t.TextMuted)
+			ui.Text(c, "不附加认证头，也不会继承父级认证。").TextColor(t.TextMuted)
 		case "bearer":
 			ed.authField(c, "Token", "token", &ed.Auth.Bearer, true)
+			ui.Text(c, "发送时附加 Authorization: Bearer <token>。").
+				FontSize(11).TextColor(t.TextMuted)
 		case "basic":
 			ed.authField(c, "用户名", "username", &ed.Auth.Basic, false)
 			ed.authField(c, "密码", "password", &ed.Auth.Basic, true)
+			ui.Text(c, "发送时附加 Authorization: Basic base64(username:password)。").
+				FontSize(11).TextColor(t.TextMuted)
 		case "apikey":
 			ed.authField(c, "Key", "key", &ed.Auth.APIKey, false)
 			ed.authField(c, "Value", "value", &ed.Auth.APIKey, true)
-			ed.authField(c, "位置（header/query）", "in", &ed.Auth.APIKey, false)
+			in := authValue(ed.Auth.APIKey, "in")
+			if in == "" {
+				in = "header"
+			}
+			ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+				ui.Text(c, "添加到").Width(140).TextColor(t.TextMuted)
+				if ui.Select(c, &in, []string{"header", "query"}).Label("API Key 位置").Width(160).Changed() {
+					setAuthValue(&ed.Auth.APIKey, "in", in)
+					ed.Dirty = true
+				}
+			})
+			ui.Text(c, "header 写入请求头；query 追加到 URL 查询参数。").
+				FontSize(11).TextColor(t.TextMuted)
 		}
 	})
 }
@@ -246,6 +269,21 @@ func (ed *Editor) authField(c *ui.Context, label, key string, list *[]app.AuthPr
 			ed.Dirty = true
 		}
 	})
+}
+
+func authTypeLabel(typ string) string {
+	switch typ {
+	case "bearer":
+		return "Bearer Token"
+	case "basic":
+		return "Basic Auth"
+	case "apikey":
+		return "API Key"
+	case "noauth":
+		return "无认证"
+	default:
+		return "Inherit"
+	}
 }
 
 func authValue(list []app.AuthProperty, key string) string {
@@ -309,4 +347,97 @@ func (ed *Editor) send() {
 	sess := ed.root.session(ed.ID)
 	sess.Start(spec)
 	ed.root.status = "请求中: " + ed.Method + " " + app.RedactURL(spec.URL)
+}
+
+func (ed *Editor) bodyToolbar(c *ui.Context) {
+	t := c.Theme()
+	kind := inferBodyKind(ed.Headers)
+	options := []string{"无 Body", "JSON", "表单", "XML"}
+	cur := options[kind]
+	ui.Row(c).Gap(8).AlignItems(ui.Center).Padding(4, 6).BorderWidth(0, 0, 1, 0).
+		BorderColor(t.Border).Children(func() {
+		ui.Text(c, "类型").FontSize(11).TextColor(t.TextMuted)
+		if ui.Select(c, &cur, options).Label("Body 类型").Width(110).Changed() {
+			ed.Headers = setBodyContentType(ed.Headers, cur)
+			ed.headersKV.Source = ""
+			ed.Dirty = true
+		}
+		ui.Spacer(c)
+		if kind == 1 {
+			if ui.Button(c, "格式化 JSON").Disabled(strings.TrimSpace(ed.bodyState().Buffer.String()) == "").Clicked() {
+				if formatted, ok := prettyJSON(ed.bodyState().Buffer.String()); ok {
+					ed.Body = formatted
+					ed.resetBodyEditor()
+					ed.Dirty = true
+				}
+			}
+		}
+	})
+}
+
+const (
+	bodyNone = iota
+	bodyJSON
+	bodyForm
+	bodyXML
+)
+
+func inferBodyKind(headers string) int {
+	for _, line := range strings.Split(headers, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "! ") {
+			continue
+		}
+		name, value, ok := strings.Cut(line, ":")
+		if !ok || !strings.EqualFold(strings.TrimSpace(name), "Content-Type") {
+			continue
+		}
+		ct := strings.ToLower(strings.TrimSpace(value))
+		switch {
+		case strings.Contains(ct, "json"):
+			return bodyJSON
+		case strings.Contains(ct, "x-www-form-urlencoded"):
+			return bodyForm
+		case strings.Contains(ct, "xml"):
+			return bodyXML
+		}
+	}
+	return bodyNone
+}
+
+func setBodyContentType(headers, label string) string {
+	var ct string
+	switch label {
+	case "JSON":
+		ct = "application/json"
+	case "表单":
+		ct = "application/x-www-form-urlencoded"
+	case "XML":
+		ct = "application/xml"
+	}
+	var lines []string
+	for _, line := range strings.Split(headers, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+		name, _, ok := strings.Cut(strings.TrimSpace(strings.TrimPrefix(trimmed, "! ")), ":")
+		if ok && strings.EqualFold(strings.TrimSpace(name), "Content-Type") &&
+			!strings.HasPrefix(trimmed, "! ") {
+			continue
+		}
+		lines = append(lines, line)
+	}
+	if ct != "" {
+		lines = append(lines, "Content-Type: "+ct)
+	}
+	return strings.Join(lines, "\n")
+}
+
+func prettyJSON(text string) (string, bool) {
+	var buf bytes.Buffer
+	if err := json.Indent(&buf, []byte(text), "", "  "); err != nil {
+		return text, false
+	}
+	return buf.String(), true
 }

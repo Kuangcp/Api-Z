@@ -60,10 +60,10 @@ type Root struct {
 	envName  string
 	envNames []string
 
-	sidebarWidth  float32
-	editorPercent float32
-	status        string
-	err           string
+	sidebarWidth   float32
+	requestPercent float32
+	status         string
+	err            string
 
 	dialog     dialogKind
 	dialogOpen bool
@@ -120,17 +120,17 @@ type Root struct {
 
 func NewRoot(paths app.Paths, store *app.Store, tree app.Tree, env app.EnvState) *Root {
 	r := &Root{
-		paths:         paths,
-		store:         store,
-		client:        httpclient.NewClient(),
-		tree:          tree,
-		expanded:      map[string]bool{},
-		sessions:      map[string]*app.Session{},
-		env:           env.Normalize(),
-		sidebarWidth:  300,
-		editorPercent: 52,
-		themePath:     app.ThemePath(paths.ConfigDir),
-		keymapPath:    app.KeymapPath(paths.ConfigDir),
+		paths:          paths,
+		store:          store,
+		client:         httpclient.NewClient(),
+		tree:           tree,
+		expanded:       map[string]bool{},
+		sessions:       map[string]*app.Session{},
+		env:            env.Normalize(),
+		sidebarWidth:   300,
+		requestPercent: 50,
+		themePath:      app.ThemePath(paths.ConfigDir),
+		keymapPath:     app.KeymapPath(paths.ConfigDir),
 	}
 	for _, c := range tree.Collections {
 		r.expanded["c:"+c.ID] = true
@@ -507,7 +507,7 @@ func (r *Root) main(c *ui.Context) {
 		}
 		r.tabBar(c)
 		ed := r.tabs[r.active]
-		ui.SplitVerticalPercent(c, &r.editorPercent, func() {
+		ui.SplitPercent(c, &r.requestPercent, func() {
 			ed.requestPane(c)
 		}, func() {
 			ed.responsePane(c)

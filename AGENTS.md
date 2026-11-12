@@ -96,7 +96,8 @@ api-z 的存在理由就是这条链路。**不要退回全量字符串 + 每帧
 - 界面文案一律中文；不做 i18n。
 - 颜色一律取 `c.Theme()`；禁止硬编码颜色（数据源/方法色除外，方法色集中在 `methodColor`）。
 - 主题跟随系统；不要自行 SetTheme 覆盖桌面偏好。
-- Body 用 mygo `ui/editor`（JSON 高亮、行号、查找）；Headers/Params 用 `TextArea`。
+- 请求/响应默认左右 `ui.SplitPercent`（`Root.requestPercent`）；请求区在左、响应区在右。
+- Body 用 mygo `ui/editor`（JSON 高亮、行号、查找），顶部「类型」选择会 upsert/remove Content-Type；JSON 提供格式化按钮。Headers/Params 用 `ui/kv_editor.go` 的文本/表格双模式：表格行带启用开关、增删与 `! ` 禁用语义，文本仍是唯一持久化格式。
 - 响应区三段：Raw / Model / AGUI；非 SSE 且 JSON 时提供 JSON 美化（只读 editor）。
 - 原始行用等宽字体、`SingleLine`、`clipLine`；AGUI 文本用分块 markdown。
 - 历史回看只读 HAR；不要假装支持重放。
