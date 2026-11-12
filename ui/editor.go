@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -36,16 +37,18 @@ type Editor struct {
 	paramsKV  kvState
 	headersKV kvState
 
-	StreamMode int
-	RawList    ui.ListState
-	ModelList  ui.ListState
-	AguiList   ui.ListState
-	md         markdown.Options
-	agui       httpclient.AguiSnapshot
-	aguiVer    uint64
-	aguiRows   []aguiRow
-	modelVer   uint64
-	modelLines []string
+	StreamMode  int
+	RespTab     int
+	RawList     ui.ListState
+	ModelList   ui.ListState
+	AguiList    ui.ListState
+	RequestList ui.ListState
+	md          markdown.Options
+	agui        httpclient.AguiSnapshot
+	aguiVer     uint64
+	aguiRows    []aguiRow
+	modelVer    uint64
+	modelLines  []string
 
 	jsonOpen   bool
 	jsonSource string
@@ -55,6 +58,10 @@ type Editor struct {
 	autoField string
 	autoStart int
 	autoEnd   int
+
+	saveMu          sync.Mutex
+	saveGen         uint64
+	autoSavePending bool
 
 	hist       *app.HARResponse
 	histLines  []string
@@ -113,7 +120,7 @@ func (ed *Editor) syncBody() {
 	}
 }
 
-func (ed *Editor) Save() error {
+func (ed *Editor) snapshotRequest() (app.Request, uint64) {
 	ed.syncBody()
 	meta := app.MergeAuth(ed.MetaJSON, ed.Auth)
 	req := app.Request{
@@ -126,15 +133,79 @@ func (ed *Editor) Save() error {
 		BodyText:    ed.Body,
 		MetaJSON:    meta,
 	}
-	if err := ed.root.store.SaveRequest(req); err != nil {
+	ed.saveMu.Lock()
+	ed.saveGen++
+	gen := ed.saveGen
+	ed.saveMu.Unlock()
+	return req, gen
+}
+
+// writeSnapshot writes req unless a newer snapshot has replaced it. Older
+// background autosaves therefore never overwrite newer manual saves.
+func (ed *Editor) writeSnapshot(req app.Request, gen uint64) error {
+	ed.saveMu.Lock()
+	defer ed.saveMu.Unlock()
+	if gen != ed.saveGen {
+		return nil
+	}
+	return ed.root.store.SaveRequest(req)
+}
+
+func (ed *Editor) Save() error {
+	req, gen := ed.snapshotRequest()
+	if err := ed.writeSnapshot(req, gen); err != nil {
 		return err
 	}
-	ed.MetaJSON = meta
+	ed.MetaJSON = req.MetaJSON
 	ed.Dirty = false
 	return nil
 }
 
+// autoSaveNow saves pending edits synchronously (tests and close paths).
+func (ed *Editor) autoSaveNow() error {
+	if !ed.Dirty {
+		return nil
+	}
+	req, gen := ed.snapshotRequest()
+	if err := ed.writeSnapshot(req, gen); err != nil {
+		return err
+	}
+	ed.MetaJSON = req.MetaJSON
+	ed.Dirty = false
+	return nil
+}
+
+// scheduleAutoSave writes edits 450ms after the last change, off the UI
+// thread. The snapshot is taken on the UI thread; stale saves are skipped.
+func (ed *Editor) scheduleAutoSave() {
+	if !ed.Dirty || ed.autoSavePending || ed.root == nil || ed.root.win == nil {
+		return
+	}
+	ed.autoSavePending = true
+	win := ed.root.win
+	time.AfterFunc(450*time.Millisecond, func() {
+		win.Update(func() {
+			ed.autoSavePending = false
+			if !ed.Dirty {
+				return
+			}
+			req, gen := ed.snapshotRequest()
+			ed.MetaJSON = req.MetaJSON
+			ed.Dirty = false
+			go func() {
+				if err := ed.writeSnapshot(req, gen); err != nil {
+					win.Update(func() {
+						ed.Dirty = true
+						ed.root.err = "自动保存失败: " + err.Error()
+					})
+				}
+			}()
+		})
+	})
+}
+
 func (ed *Editor) requestPane(c *ui.Context) {
+	defer ed.scheduleAutoSave()
 	ui.Column(c).Fill().Children(func() {
 		ed.requestHeader(c)
 		ui.Tabs(c, &ed.ReqTab, "Params", "Headers", "Body", "Auth")

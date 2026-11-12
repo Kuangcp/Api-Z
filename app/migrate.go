@@ -366,3 +366,6 @@ func parseEventText(s string) int {
 	n, _ := strconv.Atoi(strings.TrimSpace(s))
 	return n
 }
+
+// CopyFile copies src to dst with 0600 permissions.
+func CopyFile(src, dst string) error { return copyFile(src, dst) }

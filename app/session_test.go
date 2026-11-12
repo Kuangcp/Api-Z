@@ -192,7 +192,7 @@ func TestSessionManyEvents(t *testing.T) {
 
 func TestReadHARResponseTimings(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "hist.har")
-	doc := `{"log":{"version":"1.2","creator":{"name":"api-x","version":"1"},"_apiX":{"isSseResponse":true,"responseSseEventCountText":"Event 10","ttftText":"1.25s","tpotText":"120ms"},"entries":[{"time":2000,"request":{"method":"GET","url":"https://example.com","headers":[]},"response":{"status":200,"statusText":"OK","headers":[],"content":{"size":4,"mimeType":"text/event-stream","text":"data"}}}]}}`
+	doc := `{"log":{"version":"1.2","creator":{"name":"api-x","version":"1"},"_apiX":{"isSseResponse":true,"responseSseEventCountText":"Event 10","ttftText":"1.25s","tpotText":"120ms"},"entries":[{"time":2000,"request":{"method":"POST","url":"https://example.com/echo","headers":[{"name":"X-In","value":"1"}],"postData":{"mimeType":"application/json","text":"{\"a\":1}"}},"response":{"status":200,"statusText":"OK","headers":[],"content":{"size":4,"mimeType":"text/event-stream","text":"data"}}}]}}`
 	if err := os.WriteFile(path, []byte(doc), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -203,7 +203,28 @@ func TestReadHARResponseTimings(t *testing.T) {
 	if resp.TTFTMS != 1250 || resp.TPOTMS != 120 || resp.EventCount != 10 {
 		t.Fatalf("timings = %#v", resp)
 	}
+	if resp.RequestMethod != "POST" || resp.RequestURL != "https://example.com/echo" ||
+		len(resp.RequestHeaders) != 1 || resp.RequestBody != `{"a":1}` {
+		t.Fatalf("request snapshot = %#v", resp)
+	}
 	if got := parseDurationText("1.5s"); got != 1500 {
 		t.Fatalf("parse 1.5s = %d", got)
+	}
+}
+
+func TestBinaryFileName(t *testing.T) {
+	cases := []struct {
+		ct, cd, url, want string
+	}{
+		{"image/png", "", "https://example.com/img/logo", "logo.png"},
+		{"application/json", "", "https://example.com/data", "data.json"},
+		{"application/pdf", `attachment; filename="report"`, "https://example.com/x", "report.pdf"},
+		{"image/jpeg", `attachment; filename*=UTF-8''na%C3%AFve.jpg`, "https://example.com/x", "naïve.jpg"},
+		{"application/octet-stream", "", "https://example.com/", "response.bin"},
+	}
+	for _, tc := range cases {
+		if got := BinaryFileName(tc.ct, tc.cd, tc.url); got != tc.want {
+			t.Fatalf("BinaryFileName(%q,%q,%q) = %q, want %q", tc.ct, tc.cd, tc.url, got, tc.want)
+		}
 	}
 }

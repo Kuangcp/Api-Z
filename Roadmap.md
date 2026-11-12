@@ -156,7 +156,7 @@ api-z 使用自己的数据目录与 SQLite（WAL）：
 
 验收：`go test ./...` 通过；迁移测试用临时 api-x fixture；`-migrate` 命令可对真实数据只读演练。
 
-### P1 单请求闭环（已完成；JSON 折叠树待补）
+### P1 单请求闭环（已完成；JSON 折叠树/响应搜索待补）
 
 - 集合/文件夹/请求树（虚拟化、展开状态、键盘上下）。
 - 请求编辑器：方法、URL、Headers/Params（文本/表格、启用开关、增删行）、Body（类型选择、JSON 格式化）、Auth（类型/位置/继承提示）。
@@ -199,9 +199,44 @@ api-z 使用自己的数据目录与 SQLite（WAL）：
 - SSE / streamable HTTP / stdio 会话；catalog（tools/resources/prompts）。
 - 参数表单 + JSON 草稿；协议日志；进程生命周期与 stderr。
 
-### P6 按需
+### P6 api-x 对齐 backlog（非 MCP / 自动化）
 
-- 工作流/断言/变量提取、压测、代理、multipart/大文件、Cookie jar。
+第一批（已完成）：
+- 响应 Body / Headers / Request 三页签。
+- 请求实际发送快照（变量/Params/Auth/body 编码后）。
+- 二进制响应文件名推导、保存到文件、用系统程序打开。
+- 编辑防抖自动保存；关窗前落盘。
+
+第二批（响应检索）：
+- JSON 折叠树：层级路径折叠、默认展开策略、内联摘要、全部展开/收起、5 万行上限。
+- 响应搜索：`Ctrl+F`、计数、循环跳转、高亮、JSON 命中自动展开、搜索时暂停自动滚底。
+- SSE data 行本地时间戳、事件详情面板、复制事件 payload。
+
+第三批（请求语义与网络）：
+- Body `表单` 按 `key: value` URL 编码为 wire body。
+- Multipart：文本/JSON/文件 part、文件选择器、MIME 猜测、大文件流式写；cURL `-F` 导入。
+- 网络设置：连接/读取/请求超时、HTTP/1.1/2、HTTP/HTTPS 代理、bypass 正则。
+- 自定义 SSE 文本提取路径。
+- 集合/文件夹设置：Auth、颜色、OpenAPI 地址/根地址编辑与颜色继承。
+
+第四批（交互与恢复）：
+- 全局搜索扩展到 Headers/Body、多关键词、位置展示与方向键导航。
+- 响应历史自动载入最新 HAR、「最新」项、清空响应/日志；HAR 记录请求快照与右侧页签。
+- Tab 右键关闭其他/全部、单行/多行布局；最近请求浮层（最多 30，Tab/Shift+Tab）。
+- 树：双击重命名、工具栏新建/重命名/删除、集合拖拽排序、展开状态持久化。
+- 环境管理器拖拽排序、选择器 prod/test/local 语义色。
+- 快捷键补齐：`Ctrl+B`、`Ctrl+F`、`Esc`、`Ctrl+D`。
+- Headers 常见键补全；Go 代码导出。
+
+第五批（主题与稳定性）：
+- 16 槽自定义主题、内置主题集、主题管理/另存/导入导出、语法色。
+- 请求/响应独立字号。
+- ErrorBoundary 崩溃兜底页。
+- （不搬）api-x 的响应全内存/截断、禁止重定向、方法限制、无 API Key query 注入、压测。
+
+### P7 按需
+
+- 工作流/断言/变量提取、压测、Cookie jar。
 
 ## 7. 风险与对策
 
@@ -241,7 +276,8 @@ go run . -migrate -api-x-home ~/.local/share/api-x -data-dir /tmp/api-z-smoke
 - [x] 方向、架构、性能预算、迁移策略确认
 - [x] P0 骨架（Go module、mygo v0.8.3、SQLite、日志、迁移、headless 测试）
 - [x] P1 单请求闭环（HTTP、集合树、编辑器、环境/Auth、HAR、历史、多标签）
-- [ ] P1 补：JSON 折叠树、响应搜索、请求实际发送预览
+- [ ] P1 补：JSON 折叠树、响应搜索
+- [x] P6 第一批补：响应 Headers/Request 页签、实际请求快照、二进制保存/打开、自动保存
 - [x] P2 第一批：集合/文件夹/请求 CRUD、重命名、复制、上下移动、级联删除、Ctrl+Tab、Ctrl+K
 - [x] P2 第二批：Postman v2.1 导入/导出
 - [x] P2 第三批：环境管理器（tag 分组）、变量自动补全、集合 Tab 切换
@@ -251,6 +287,7 @@ go run . -migrate -api-x-home ~/.local/share/api-x -data-dir /tmp/api-z-smoke
 - [x] P3 补：TPOT、树节点运行中标记、AG-UI 自定义 UI 组件、MESSAGES_SNAPSHOT
 - [x] P4 OpenAPI、data/ Push/Pull、curl/代码片段、api-x HAR 历史读取
 - [ ] P5 MCP（SSE / streamable HTTP / stdio）
+- [x] P6 第一批：响应三页签/请求快照/二进制保存打开/自动保存
 
 ### 已实测
 

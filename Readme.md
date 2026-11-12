@@ -46,12 +46,12 @@ go run . -migrate \
 ## 功能（当前）
 
 - 集合 / 文件夹 / 请求树：集合以左侧 Tab 切换，超出宽度时保留最近使用的几个、其余收进下拉菜单；搜索、展开、键盘/鼠标选择；新建集合/文件夹/请求、重命名、复制请求、上移/下移、移动到文件夹（跨集合/层级）、拖拽排序/拖入文件夹、级联删除（二次确认）。
-- 请求编辑（左）/ 响应（右）左右分栏：方法、URL、Params/Headers 文本/表格切换（启用开关、增删行、`! ` 禁用）、Body（JSON/表单/XML/无类型、JSON 格式化、高亮编辑器）、Auth（inherit/noauth/bearer/basic/apikey，API Key 位置选择与继承提示）。
+- 请求编辑（左）/ 响应（右）左右分栏；编辑内容自动保存（防抖 450ms）：方法、URL、Params/Headers 文本/表格切换（启用开关、增删行、`! ` 禁用）、Body（JSON/表单/XML/无类型、JSON 格式化、高亮编辑器）、Auth（inherit/noauth/bearer/basic/apikey，API Key 位置选择与继承提示）。
 - 环境变量 `{{name}}` 替换、环境切换（标题栏 `标签 | 环境名`，标签→环境两级级联菜单，支持无环境/管理环境）、集合/文件夹/请求级 Auth 继承。
 - 环境管理器：多环境、tag 分组、变量增删改、设为当前；保存后立即用于替换。
 - 变量补全：URL/Headers/Params 输入 `{{` 弹出当前环境变量，Body 编辑器用 completion 菜单；插入 `{{key}}` 并保留光标。
-- 发送 / 取消 / 120s 超时；状态码、耗时、大小、TTFT、TPOT、SSE 事件数；请求树显示运行中 Spinner。
-- 响应：Raw（虚拟化、自动跟随末尾）、Model（OpenAI/Responses delta 提取）、AG-UI（文本/工具调用/推理/中断卡片、interrupt 自定义 UI、MESSAGES_SNAPSHOT 完整还原）、JSON 美化（只读高亮编辑器）。
+- 发送 / 取消 / 120s 超时；状态码、耗时、大小、TTFT、TPOT、SSE 事件数；请求树显示运行中 Spinner；编辑防抖 450ms 自动保存，关窗前落盘。
+- 响应：Body / Headers / Request 三页签；Raw（虚拟化、自动跟随末尾）、Model（OpenAI/Responses delta 提取）、AG-UI（文本/工具调用/推理/中断卡片、interrupt 自定义 UI、MESSAGES_SNAPSHOT 完整还原）、JSON 美化；Request 展示实际发送快照并支持复制；二进制响应可推导文件名、保存到文件或用系统程序打开。
 - 多标签，每个标签独立的编辑与流式响应状态；`Ctrl+Tab` 在最近两个标签间切换，`Ctrl+K` 全局搜索。
 - 启动恢复上次打开的 Request（不存在则显示空白态）与主窗口位置/大小/最大化状态。
 - 无边框窗口 + 自绘标题栏（应用图标 + Api-Z、环境级联切换/数据目录/设置、拖动/双击最大化/窗口控制），窗口底色随主题。
@@ -85,6 +85,6 @@ main.go -> ui -> app -> httpclient
 ## 已知限制
 
 - 原始超长行（>4096 字节）只显示截断，复制仍为全文。
-- 暂无：Multipart、代理 UI、MCP、工作流/压测、请求发送前预览、响应搜索、OpenAPI 请求体表单编辑。
+- 暂无：Multipart、代理 UI、MCP、工作流/压测、JSON 折叠树、响应搜索、OpenAPI 请求体表单编辑。
 - AG-UI 的 `MESSAGES_SNAPSHOT` 只做基础还原；复杂 UI 组件（如自定义 interrupt UI）尚未渲染。
 - 历史回看只读 HAR，不支持重新执行。

@@ -156,7 +156,16 @@ func NewRoot(paths app.Paths, store *app.Store, tree app.Tree, env app.EnvState)
 	return r
 }
 
-func (r *Root) Attach(win *mygo.Window) { r.win = win }
+func (r *Root) Attach(win *mygo.Window) {
+	r.win = win
+	win.OnClose(func(*mygo.CloseEvent) {
+		for _, ed := range r.tabs {
+			if ed.Dirty {
+				_ = ed.Save()
+			}
+		}
+	})
+}
 
 // SetAppIconPNG provides the icon drawn in the custom title bar.
 func (r *Root) SetAppIconPNG(png []byte) {

@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"mime"
 	"net/http"
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -45,6 +48,7 @@ type SessionSnapshot struct {
 	AguiVer     uint64
 	SpoolPath   string
 	ContentType string
+	FileName    string
 }
 
 // Session is one request's stream and derived state. The request goroutine
@@ -71,6 +75,7 @@ type Session struct {
 	contentType string
 	isSSE       bool
 	binary      bool
+	fileName    string
 
 	started   time.Time
 	finished  time.Time
@@ -137,6 +142,7 @@ func (s *Session) Start(spec httpclient.Spec) {
 	s.contentType = ""
 	s.isSSE = false
 	s.binary = false
+	s.fileName = ""
 	s.started = now
 	s.finished = time.Time{}
 	s.ttft = 0
@@ -241,6 +247,7 @@ func (s *Session) Snapshot() SessionSnapshot {
 		AguiVer:     s.agui.Version(),
 		SpoolPath:   s.spoolPath,
 		ContentType: s.contentType,
+		FileName:    s.fileName,
 	}
 	if s.headers != nil {
 		out.Headers = append([]string(nil), s.headers...)
@@ -283,6 +290,13 @@ func (s *Session) AguiSnapshot() httpclient.AguiSnapshot { return s.agui.Snapsho
 func (s *Session) AguiVersion() uint64                   { return s.agui.Version() }
 func (s *Session) ModelText() string                     { return s.model.Text() }
 func (s *Session) ModelVersion() uint64                  { return s.model.Version() }
+
+// Spec returns the request as it was sent, for the Request view.
+func (s *Session) Spec() (httpclient.Spec, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.spec, !s.started.IsZero()
+}
 
 func (s *Session) SpoolPath() string {
 	s.mu.Lock()
@@ -349,6 +363,9 @@ func (h *sessionHandler) OnHeaders(status int, header http.Header, contentType s
 	s.contentType = contentType
 	s.isSSE = isSSE
 	s.binary = !isSSE && IsBinaryContentType(contentType)
+	if s.binary {
+		s.fileName = BinaryFileName(contentType, header.Get("Content-Disposition"), s.spec.URL)
+	}
 	for name, values := range header {
 		if strings.EqualFold(name, ":status") {
 			continue
@@ -526,4 +543,78 @@ func (s *Session) applyEventLocked(ev httpclient.SSEEvent) {
 	s.lastEvent = at
 	s.agui.Apply(ev)
 	s.model.Apply(ev)
+}
+
+// BinaryFileName derives a readable filename for a binary response from
+// Content-Disposition, the URL path, or the content type.
+func BinaryFileName(contentType, contentDisposition, rawURL string) string {
+	name := ""
+	if contentDisposition != "" {
+		if _, params, err := mime.ParseMediaType(contentDisposition); err == nil {
+			name = strings.TrimSpace(params["filename"])
+			if name == "" {
+				if star := params["filename*"]; star != "" {
+					if i := strings.IndexByte(star, '\''); i >= 0 {
+						if j := strings.IndexByte(star[i+1:], '\''); j >= 0 {
+							val := star[i+1+j+1:]
+							if dec, err := url.PathUnescape(val); err == nil {
+								name = dec
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	name = sanitizeFileName(name)
+	if name == "" {
+		if u, err := url.Parse(rawURL); err == nil {
+			name = sanitizeFileName(path.Base(u.Path))
+		}
+	}
+	ext := extensionForContentType(contentType)
+	if name == "" || name == "." || name == "/" {
+		name = "response" + ext
+	} else if filepath.Ext(name) == "" && ext != "" {
+		name += ext
+	}
+	if name == "" {
+		name = "response.bin"
+	}
+	return name
+}
+
+func sanitizeFileName(name string) string {
+	name = strings.TrimSpace(filepath.Base(strings.ReplaceAll(name, "\\", "/")))
+	name = strings.ReplaceAll(name, "\x00", "")
+	if name == "." || name == "/" || name == ".." {
+		return ""
+	}
+	return name
+}
+
+func extensionForContentType(contentType string) string {
+	ct := strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))
+	switch {
+	case ct == "application/json" || strings.HasSuffix(ct, "+json"):
+		return ".json"
+	case ct == "application/pdf":
+		return ".pdf"
+	case ct == "application/zip":
+		return ".zip"
+	case ct == "image/png":
+		return ".png"
+	case strings.HasPrefix(ct, "image/jpeg"):
+		return ".jpg"
+	case ct == "image/gif":
+		return ".gif"
+	case ct == "image/webp":
+		return ".webp"
+	case strings.HasPrefix(ct, "text/"):
+		return ".txt"
+	}
+	if exts, err := mime.ExtensionsByType(ct); err == nil && len(exts) > 0 {
+		return exts[0]
+	}
+	return ".bin"
 }

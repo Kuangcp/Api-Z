@@ -44,6 +44,15 @@ func (ed *Editor) responsePane(c *ui.Context) {
 
 	ui.Column(c).Fill().Children(func() {
 		ed.responseToolbar(c, sess, snap)
+		ed.responseTabs(c, sess, snap)
+		switch ed.RespTab {
+		case 1:
+			ed.responseHeaders(c, snap.Headers)
+			return
+		case 2:
+			ed.responseRequest(c, sess)
+			return
+		}
 		if ed.StreamMode == 0 && ed.jsonOpen && ed.jsonEd != nil {
 			editor.View(c, ed.jsonEd).Grow(1).FillWidth()
 			return
@@ -88,13 +97,14 @@ func (ed *Editor) responseToolbar(c *ui.Context, sess *app.Session, snap app.Ses
 			ui.Text(c, app.FormatBytes(snap.Bytes)).FontSize(11).TextColor(t.TextMuted)
 		}
 		if snap.IsSSE {
-			ui.Text(c, fmt.Sprintf("Event %d", snap.Events)).FontSize(11).TextColor(t.TextMuted)
+			metrics := []string{fmt.Sprintf("Event %d", snap.Events)}
 			if snap.TTFTMS > 0 {
-				ui.Text(c, fmt.Sprintf("TTFT %dms", snap.TTFTMS)).FontSize(11).TextColor(t.TextMuted)
+				metrics = append(metrics, fmt.Sprintf("TTFT %dms", snap.TTFTMS))
 			}
 			if snap.TPOTMS > 0 {
-				ui.Text(c, fmt.Sprintf("TPOT %dms", snap.TPOTMS)).FontSize(11).TextColor(t.TextMuted)
+				metrics = append(metrics, fmt.Sprintf("TPOT %dms", snap.TPOTMS))
 			}
+			ui.Text(c, strings.Join(metrics, " · ")).FontSize(11).TextColor(t.TextMuted).SingleLine()
 		}
 		if snap.Truncated {
 			ui.Text(c, "已截断显示").FontSize(11).TextColor(t.Warning)
@@ -113,11 +123,6 @@ func (ed *Editor) responseToolbar(c *ui.Context, sess *app.Session, snap app.Ses
 				}
 			}
 		}).Label("历史")
-		canJSON := snap.Done && !snap.IsSSE && app.IsJSONContentType(snap.ContentType)
-		if ui.Button(c, "JSON").Disabled(!canJSON).Clicked() {
-			ed.toggleJSON(sess, snap)
-		}
-		ui.Segmented(c, &ed.StreamMode, "Raw", "Model", "AGUI").Label("响应视图")
 		if ui.Button(c, "复制").Clicked() {
 			c.WriteClipboard(sess.CopyText())
 			c.Toast("已复制响应正文")
@@ -130,6 +135,20 @@ func (ed *Editor) responseToolbar(c *ui.Context, sess *app.Session, snap app.Ses
 		if snap.Error != "" {
 			ui.Text(c, snap.Error).FontSize(11).TextColor(t.Danger).SingleLine().MaxWidth(360).
 				Tooltip(snap.Error)
+		}
+	})
+}
+
+func (ed *Editor) responseTabs(c *ui.Context, sess *app.Session, snap app.SessionSnapshot) {
+	ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+		ui.Tabs(c, &ed.RespTab, "Body", "Headers", "Request")
+		ui.Spacer(c)
+		if ed.RespTab == 0 {
+			canJSON := snap.Done && !snap.IsSSE && app.IsJSONContentType(snap.ContentType)
+			if ui.Button(c, "JSON").Disabled(!canJSON).Clicked() {
+				ed.toggleJSON(sess, snap)
+			}
+			ui.Segmented(c, &ed.StreamMode, "Raw", "Model", "AGUI").Label("响应视图")
 		}
 	})
 }
@@ -172,7 +191,19 @@ func (ed *Editor) historyPane(c *ui.Context) {
 				ui.Text(c, fmt.Sprintf("TPOT %dms", resp.TPOTMS)).FontSize(11).TextColor(t.TextMuted)
 			}
 			ui.Box(c).Grow(1)
-			if ui.Button(c, "JSON").Clicked() {
+			if ui.Button(c, "复制").Clicked() {
+				c.WriteClipboard(resp.Body)
+				c.Toast("已复制历史正文")
+			}
+			if ui.Button(c, "返回实时").Clicked() {
+				ed.hist = nil
+				ed.histLines = nil
+			}
+		})
+		ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+			ui.Tabs(c, &ed.RespTab, "Body", "Headers", "Request")
+			ui.Spacer(c)
+			if ed.RespTab == 0 && ui.Button(c, "JSON").Clicked() {
 				if ed.histJSONEd == nil {
 					raw := resp.Body
 					var buf bytes.Buffer
@@ -185,15 +216,15 @@ func (ed *Editor) historyPane(c *ui.Context) {
 				}
 				ed.histJSON = !ed.histJSON
 			}
-			if ui.Button(c, "复制").Clicked() {
-				c.WriteClipboard(resp.Body)
-				c.Toast("已复制历史正文")
-			}
-			if ui.Button(c, "返回实时").Clicked() {
-				ed.hist = nil
-				ed.histLines = nil
-			}
 		})
+		if ed.RespTab == 1 {
+			ed.responseHeaders(c, resp.Headers)
+			return
+		}
+		if ed.RespTab == 2 {
+			ed.historyRequest(c, resp)
+			return
+		}
 		if ed.histJSON && ed.histJSONEd != nil {
 			editor.View(c, ed.histJSONEd).Grow(1).FillWidth()
 			return
@@ -228,11 +259,7 @@ func (ed *Editor) toggleJSON(sess *app.Session, snap app.SessionSnapshot) {
 func (ed *Editor) rawView(c *ui.Context, sess *app.Session, snap app.SessionSnapshot) {
 	t := c.Theme()
 	if snap.Binary {
-		ui.Column(c).Fill().Padding(16).Gap(8).Children(func() {
-			ui.Text(c, "二进制响应").FontSize(14).Bold()
-			ui.Text(c, fmt.Sprintf("%s，已保存到：%s", app.FormatBytes(snap.Bytes), snap.SpoolPath)).
-				TextColor(t.TextMuted).Selectable()
-		})
+		ed.binaryView(c, snap)
 		return
 	}
 	n := snap.LineCount

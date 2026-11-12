@@ -243,17 +243,21 @@ func eventText(n int) string {
 
 // HARResponse is the response part of a saved HAR, for the history popover.
 type HARResponse struct {
-	Status     int
-	StatusText string
-	Headers    []string
-	Body       string
-	IsSSE      bool
-	DurationMS int64
-	SizeBytes  int64
-	TTFTMS     int64
-	TPOTMS     int64
-	EventCount int
-	HARPath    string
+	Status         int
+	StatusText     string
+	Headers        []string
+	Body           string
+	IsSSE          bool
+	DurationMS     int64
+	SizeBytes      int64
+	TTFTMS         int64
+	TPOTMS         int64
+	EventCount     int
+	HARPath        string
+	RequestMethod  string
+	RequestURL     string
+	RequestHeaders []string
+	RequestBody    string
 }
 
 func ReadHARResponse(path string) (HARResponse, error) {
@@ -278,6 +282,17 @@ func ReadHARResponse(path string) (HARResponse, error) {
 		out.Body = e.Response.Content.Text
 		for _, h := range e.Response.Headers {
 			out.Headers = append(out.Headers, h.Name+": "+h.Value)
+		}
+		out.RequestMethod = e.Request.Method
+		out.RequestURL = e.Request.URL
+		for _, h := range e.Request.Headers {
+			out.RequestHeaders = append(out.RequestHeaders, h.Name+": "+h.Value)
+		}
+		if e.Request.PostData != nil {
+			out.RequestBody = e.Request.PostData.Text
+		}
+		if out.RequestBody == "" {
+			out.RequestBody = doc.Log.APIX.RequestBodyText
 		}
 	}
 	out.EventCount = parseEventText(doc.Log.APIX.ResponseSSEEventCount)
