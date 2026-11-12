@@ -16,6 +16,8 @@ type ThemePrefs struct {
 	Accent string `json:"accent,omitempty"`
 	Font   string `json:"font,omitempty"`
 	Scale  int    `json:"scale,omitempty"`
+	Scheme string `json:"scheme,omitempty"`
+	Radius int    `json:"radius,omitempty"`
 }
 
 // Theme scale bounds, in percent. Zero means the default.
@@ -34,6 +36,17 @@ func NormalizeThemePrefs(p ThemePrefs) ThemePrefs {
 		p.Accent = ""
 	}
 	p.Font = strings.TrimSpace(p.Font)
+	switch strings.ToLower(strings.TrimSpace(p.Scheme)) {
+	case "", "default":
+		p.Scheme = ""
+	case "ocean", "forest", "warm":
+		p.Scheme = strings.ToLower(strings.TrimSpace(p.Scheme))
+	default:
+		p.Scheme = ""
+	}
+	if p.Radius < 0 || p.Radius > 12 {
+		p.Radius = 0
+	}
 	if p.Scale == 0 {
 		p.Scale = DefaultThemeScale
 	}
@@ -46,8 +59,34 @@ func NormalizeThemePrefs(p ThemePrefs) ThemePrefs {
 	return p
 }
 
-func ThemePath(configDir string) string  { return filepath.Join(configDir, "theme.json") }
-func KeymapPath(configDir string) string { return filepath.Join(configDir, "keymap.json") }
+func ThemePath(configDir string) string       { return filepath.Join(configDir, "theme.json") }
+func KeymapPath(configDir string) string      { return filepath.Join(configDir, "keymap.json") }
+func SessionPath(configDir string) string     { return filepath.Join(configDir, "session.json") }
+func WindowStatePath(configDir string) string { return filepath.Join(configDir, "window-state.json") }
+
+// SessionPrefs remembers the last request opened, so the next launch can
+// restore the same editor tab. An empty LastRequest means no tab.
+type SessionPrefs struct {
+	LastRequest string `json:"lastRequest,omitempty"`
+}
+
+func LoadSessionPrefs(path string) SessionPrefs {
+	var p SessionPrefs
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return SessionPrefs{}
+	}
+	if json.Unmarshal(b, &p) != nil {
+		return SessionPrefs{}
+	}
+	p.LastRequest = strings.TrimSpace(p.LastRequest)
+	return p
+}
+
+func SaveSessionPrefs(path string, p SessionPrefs) error {
+	p.LastRequest = strings.TrimSpace(p.LastRequest)
+	return writeJSON(path, p)
+}
 
 func LoadThemePrefs(path string) ThemePrefs {
 	var p ThemePrefs

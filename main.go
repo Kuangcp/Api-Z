@@ -93,15 +93,23 @@ func main() {
 	app.LogInfo("startup", "api-z start", "data", paths.DataDir, "db", paths.DBPath,
 		"collections", len(tree.Collections), "requests", len(tree.Requests))
 
+	// Remember the main window's bounds and maximized state across launches.
+	mygo.App.SetWindowStateStore(windowStateStore{path: app.WindowStatePath(paths.ConfigDir)})
+	themePrefs := app.LoadThemePrefs(app.ThemePath(paths.ConfigDir))
+
 	root := ui.NewRoot(paths, store, tree, env)
 	mygo.App.WhenReady(func() {
 		win := mygo.NewWindow(mygo.WindowOptions{
-			Title:     "Api-Z",
-			Width:     1440,
-			Height:    900,
-			MinWidth:  900,
-			MinHeight: 600,
-			Content:   mygoui.View(root.View),
+			Title:           "Api-Z",
+			Width:           1440,
+			Height:          900,
+			MinWidth:        900,
+			MinHeight:       600,
+			StateKey:        "main",
+			Frameless:       true,
+			CornerRadius:    ui.WindowCornerRadius(themePrefs),
+			BackgroundColor: ui.WindowBackgroundColor(themePrefs),
+			Content:         mygoui.View(root.View),
 		})
 		if err := win.SetIcon(appIconPNG); err != nil {
 			app.LogWarn("startup", "set window icon failed", "err", err.Error())

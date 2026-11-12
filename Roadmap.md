@@ -246,6 +246,7 @@ go run . -migrate -api-x-home ~/.local/share/api-x -data-dir /tmp/api-z-smoke
 - [x] P2 第二批：Postman v2.1 导入/导出
 - [x] P2 第三批：环境管理器（tag 分组）、变量自动补全、集合 Tab 切换
 - [x] P2 第四批：主题、界面字体与缩放、快捷键设置
+- [x] P2 第五批：无边框窗口与自绘标题栏、配色方案/圆角、窗口位置大小恢复、上次 Request 恢复
 - [x] P3 核心：SSE 增量、Raw/Model/AGUI、工具/推理/中断卡片、600KB/万事件验证
 - [x] P3 补：TPOT、树节点运行中标记、AG-UI 自定义 UI 组件、MESSAGES_SNAPSHOT
 - [x] P4 OpenAPI、data/ Push/Pull、curl/代码片段、api-x HAR 历史读取

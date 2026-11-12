@@ -48,6 +48,7 @@ func (r *Root) switchRecent() {
 			r.active = i
 			r.selected = id
 			r.touchMRU(id)
+			r.rememberActiveRequest()
 			return
 		}
 	}

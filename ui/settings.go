@@ -40,6 +40,29 @@ func (r *Root) themeSettings(c *ui.Context, t *ui.Theme) {
 		Label("外观模式").Changed() {
 		r.saveThemePrefs()
 	}
+	ui.Text(c, "配色方案").FontSize(12).TextColor(t.TextMuted)
+	labels := make([]string, 0, len(schemeOptions))
+	for _, opt := range schemeOptions {
+		labels = append(labels, opt.label)
+	}
+	scheme := schemeIndex(r.themePrefs.Scheme)
+	if ui.Segmented(c, &scheme, labels...).Label("配色方案").Changed() {
+		r.themePrefs.Scheme = schemeOptions[scheme].key
+		r.saveThemePrefs()
+	}
+	ui.Text(c, "圆角").FontSize(12).TextColor(t.TextMuted)
+	radiusValues := []int{0, 4, 6, 8, 12}
+	radiusLabels := []string{"默认", "4", "6", "8", "12"}
+	radius := 0
+	for i, v := range radiusValues {
+		if v == r.themePrefs.Radius {
+			radius = i
+		}
+	}
+	if ui.Segmented(c, &radius, radiusLabels...).Label("圆角").Changed() {
+		r.themePrefs.Radius = radiusValues[radius]
+		r.saveThemePrefs()
+	}
 	ui.Text(c, "强调色").FontSize(12).TextColor(t.TextMuted)
 	presets := []string{"#4f8cff", "#22c55e", "#a855f7", "#f59e0b", "#ef4444", "#06b6d4"}
 	ui.Row(c).Gap(8).Children(func() {

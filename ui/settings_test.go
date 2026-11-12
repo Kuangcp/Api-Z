@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
@@ -161,5 +162,45 @@ func TestThemeResetsToSystem(t *testing.T) {
 	}
 	if got := app.LoadThemePrefs(root.themePath); got.Mode != 0 || got.Accent != "" {
 		t.Fatalf("persisted reset = %#v", got)
+	}
+}
+
+func TestThemeSchemeAndRadiusSettings(t *testing.T) {
+	paths := app.PathsAt(t.TempDir(), t.TempDir())
+	if err := paths.Ensure(); err != nil {
+		t.Fatal(err)
+	}
+	store, err := app.OpenStore(paths.DBPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	root := NewRoot(paths, store, app.Tree{}, app.EnvState{Version: 1})
+	tt := ui.NewTester(root.View, 1200, 900)
+	tt.Frame()
+	if err := tt.Click("设置"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if err := tt.Click("海洋"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if root.themePrefs.Scheme != "ocean" {
+		t.Fatalf("scheme = %q", root.themePrefs.Scheme)
+	}
+	if err := tt.Click("8"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if root.themePrefs.Radius != 8 {
+		t.Fatalf("radius = %d", root.themePrefs.Radius)
+	}
+	got := app.LoadThemePrefs(root.themePath)
+	if got.Scheme != "ocean" || got.Radius != 8 {
+		t.Fatalf("persisted = %#v", got)
+	}
+	if bg := WindowBackgroundColor(root.themePrefs); !strings.Contains(bg, "#edf4fb") {
+		t.Fatalf("window bg = %q", bg)
 	}
 }

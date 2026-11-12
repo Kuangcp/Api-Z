@@ -95,6 +95,7 @@ type Root struct {
 	themePrefs   app.ThemePrefs
 	themePath    string
 	themeKey     string
+	sessionPath  string
 	baseTheme    *ui.Theme
 	accentHex    string
 	fontInput    string
@@ -131,6 +132,7 @@ func NewRoot(paths app.Paths, store *app.Store, tree app.Tree, env app.EnvState)
 		requestPercent: 50,
 		themePath:      app.ThemePath(paths.ConfigDir),
 		keymapPath:     app.KeymapPath(paths.ConfigDir),
+		sessionPath:    app.SessionPath(paths.ConfigDir),
 	}
 	for _, c := range tree.Collections {
 		r.expanded["c:"+c.ID] = true
@@ -144,6 +146,7 @@ func NewRoot(paths app.Paths, store *app.Store, tree app.Tree, env app.EnvState)
 	r.fontInput = r.themePrefs.Font
 	r.keymap = mergedKeymap(app.LoadKeymap(r.keymapPath))
 	r.ensureActiveCollection()
+	r.restoreLastRequest()
 	r.status = fmt.Sprintf("%d 个集合 · %d 个请求", len(tree.Collections), len(tree.Requests))
 	return r
 }
@@ -156,6 +159,7 @@ func (r *Root) View(c *ui.Context) {
 	r.handleShortcuts(c)
 	t := c.Theme()
 	ui.Column(c).Fill().Children(func() {
+		r.titleBar(c)
 		r.topBar(c)
 		ui.Split(c, &r.sidebarWidth, func() {
 			r.sidebar(c)
@@ -181,13 +185,40 @@ func (r *Root) View(c *ui.Context) {
 	r.curlDialog(c)
 }
 
+const titleBarHeight = 38
+
+// titleBar is the frameless window's own title bar: drag anywhere on the
+// strip, double-click to maximize, window controls on the right.
+func (r *Root) titleBar(c *ui.Context) {
+	t := c.Theme()
+	ui.Row(c).Height(titleBarHeight).FillWidth().Padding(0, 12).Gap(8).
+		AlignItems(ui.Center).DragWindow().Background(t.Surface).Children(func() {
+		ui.Text(c, "Api-Z").FontSize(12.5).Bold()
+		ui.Text(c, "API 调试").FontSize(11).TextColor(t.TextMuted)
+		ui.Spacer(c)
+		if r.win != nil {
+			if iconButtonPlain(c, iconMinus, "最小化").Clicked() {
+				r.win.Minimize()
+			}
+			if r.win.IsMaximized() {
+				if iconButtonPlain(c, iconRestore, "还原").Clicked() {
+					r.win.ToggleMaximize()
+				}
+			} else if iconButtonPlain(c, iconMaximize, "最大化").Clicked() {
+				r.win.ToggleMaximize()
+			}
+			if iconButtonPlain(c, iconX, "关闭窗口").Clicked() {
+				r.win.Close()
+			}
+		}
+	})
+}
+
 func (r *Root) topBar(c *ui.Context) {
 	t := c.Theme()
 	ui.Row(c).Padding(6, 12).Gap(10).AlignItems(ui.Center).
 		BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
-		ui.Text(c, "Api-Z").FontSize(15).Bold()
-		ui.Text(c, "Go + mygo").FontSize(11).TextColor(t.TextMuted)
-		ui.Box(c).Grow(1)
+		ui.Spacer(c)
 		ui.Text(c, "环境").FontSize(12).TextColor(t.TextMuted)
 		names := r.envNames
 		if len(names) == 0 {
@@ -459,6 +490,7 @@ func (r *Root) openRequest(id string) {
 			r.active = i
 			r.selected = id
 			r.touchMRU(id)
+			r.rememberActiveRequest()
 			return
 		}
 	}
@@ -475,6 +507,35 @@ func (r *Root) openRequest(id string) {
 	r.active = len(r.tabs) - 1
 	r.selected = id
 	r.touchMRU(id)
+	r.rememberActiveRequest()
+}
+
+// restoreLastRequest reopens the request the previous session left active.
+// A request that no longer exists leaves the app on the blank state.
+func (r *Root) restoreLastRequest() {
+	if r.sessionPath == "" {
+		return
+	}
+	prefs := app.LoadSessionPrefs(r.sessionPath)
+	if prefs.LastRequest == "" {
+		return
+	}
+	if _, ok := r.tree.Request(prefs.LastRequest); !ok {
+		_ = app.SaveSessionPrefs(r.sessionPath, app.SessionPrefs{})
+		return
+	}
+	r.openRequest(prefs.LastRequest)
+}
+
+func (r *Root) rememberActiveRequest() {
+	if r.sessionPath == "" {
+		return
+	}
+	id := ""
+	if r.active >= 0 && r.active < len(r.tabs) {
+		id = r.tabs[r.active].ID
+	}
+	_ = app.SaveSessionPrefs(r.sessionPath, app.SessionPrefs{LastRequest: id})
 }
 
 func (r *Root) requestRunning(id string) bool {
@@ -538,6 +599,7 @@ func (r *Root) tabBar(c *ui.Context) {
 				r.active = i
 				r.selected = ed.ID
 				r.touchMRU(ed.ID)
+				r.rememberActiveRequest()
 			}
 			btn.ContextMenu(func(m *ui.Menu) {
 				if m.Item("关闭").Chosen() {

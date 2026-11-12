@@ -276,6 +276,7 @@ func (r *Root) closeRequestTab(id string) {
 		if r.active < 0 {
 			r.active = 0
 		}
+		r.rememberActiveRequest()
 		return
 	}
 }
@@ -306,6 +307,7 @@ func (r *Root) closeTabsForRemoved() {
 	if r.active < 0 {
 		r.active = 0
 	}
+	r.rememberActiveRequest()
 }
 
 func (r *Root) readAndImportPostman(path string) (string, string, error) {
@@ -553,4 +555,5 @@ func (r *Root) closeTabAt(i int) {
 	if r.active < 0 {
 		r.active = 0
 	}
+	r.rememberActiveRequest()
 }

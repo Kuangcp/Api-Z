@@ -20,7 +20,9 @@ func resolveTheme(base *ui.Theme, p app.ThemePrefs) *ui.Theme {
 		base = ui.DarkTheme()
 	}
 	cp := *base
+	applySchemePalette(&cp, schemePaletteFor(p.Scheme, cp.Dark))
 	cp.Font = strings.TrimSpace(p.Font)
+	cp.Radius = themeRadius(p)
 	accent := strings.TrimSpace(p.Accent)
 	if accent == "" || !app.ValidHex(accent) {
 		return &cp
@@ -39,13 +41,17 @@ func (r *Root) applyTheme(c *ui.Context) {
 		cp := *c.Theme()
 		r.baseTheme = &cp
 	}
-	key := fmt.Sprintf("%d|%s|%s|%d", r.themePrefs.Mode, r.themePrefs.Accent, r.themePrefs.Font, r.themePrefs.Scale)
+	key := fmt.Sprintf("%d|%s|%s|%d|%s|%d", r.themePrefs.Mode, r.themePrefs.Accent,
+		r.themePrefs.Font, r.themePrefs.Scale, r.themePrefs.Scheme, r.themePrefs.Radius)
 	if key == r.themeKey {
 		return
 	}
 	r.themeKey = key
 	c.SetTheme(resolveTheme(r.baseTheme, r.themePrefs))
 	c.SetZoom(themeScaleFactor(r.themePrefs.Scale))
+	if r.win != nil {
+		_ = r.win.SetBackgroundColor(WindowBackgroundColor(r.themePrefs))
+	}
 }
 
 func (r *Root) saveThemePrefs() {
@@ -67,6 +73,8 @@ func (r *Root) saveThemePrefs() {
 func (r *Root) resetTheme() {
 	r.themePrefs.Mode = 0
 	r.themePrefs.Accent = ""
+	r.themePrefs.Scheme = ""
+	r.themePrefs.Radius = 0
 	r.accentHex = ""
 	r.saveThemePrefs()
 }
