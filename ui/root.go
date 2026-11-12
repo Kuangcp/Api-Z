@@ -48,6 +48,9 @@ type Root struct {
 	search   string
 	selected string
 
+	activeCollection string
+	colMRU           []string
+
 	tabs   []*Editor
 	active int
 
@@ -140,6 +143,7 @@ func NewRoot(paths app.Paths, store *app.Store, tree app.Tree, env app.EnvState)
 	r.themePrefs = app.LoadThemePrefs(r.themePath)
 	r.accentHex = r.themePrefs.Accent
 	r.keymap = mergedKeymap(app.LoadKeymap(r.keymapPath))
+	r.ensureActiveCollection()
 	r.status = fmt.Sprintf("%d 个集合 · %d 个请求", len(tree.Collections), len(tree.Requests))
 	return r
 }
@@ -220,8 +224,9 @@ func (r *Root) activateEnv(name string) {
 func (r *Root) sidebar(c *ui.Context) {
 	t := c.Theme()
 	ui.Column(c).Fill().Padding(6).Children(func() {
+		r.collectionTabBar(c)
 		ui.Row(c).Gap(6).Children(func() {
-			ui.TextInput(c, &r.search).Placeholder("搜索请求 / URL").Grow(1)
+			ui.TextInput(c, &r.search).Placeholder("搜索当前集合 / URL").Grow(1)
 			iconButtonPlain(c, iconX, "清空搜索").Disabled(r.search == "").OnClick(func() { r.search = "" })
 		})
 		ui.Row(c).Gap(6).Children(func() {
@@ -250,7 +255,15 @@ func (r *Root) sidebar(c *ui.Context) {
 			r.treeRow(c, rows[i])
 		}).Grow(1).Children(func() {
 			if len(rows) == 0 {
-				ui.Text(c, "没有匹配的请求").Padding(12).TextColor(t.TextMuted)
+				msg := "没有匹配的请求"
+				if r.search == "" {
+					if len(r.tree.Collections) == 0 {
+						msg = "还没有集合"
+					} else {
+						msg = "该集合还没有请求"
+					}
+				}
+				ui.Text(c, msg).Padding(12).TextColor(t.TextMuted)
 			}
 		})
 	})
@@ -332,24 +345,24 @@ func methodColor(c *ui.Context, method string) ui.Color {
 
 func (r *Root) visibleRows() []treeRow {
 	search := strings.ToLower(strings.TrimSpace(r.search))
-	var rows []treeRow
-	collections := append([]app.Collection(nil), r.tree.Collections...)
-	sort.SliceStable(collections, func(i, j int) bool { return collections[i].SortOrder < collections[j].SortOrder })
-	for _, col := range collections {
-		colRows, matched := r.collectionRows(col, 0, search)
-		if search != "" && !matched {
-			continue
-		}
-		rows = append(rows, colRows...)
+	col, ok := r.tree.Collection(r.activeCollection)
+	if !ok {
+		return nil
+	}
+	rows, matched := r.collectionRows(col, 0, search)
+	if search != "" && !matched {
+		return nil
 	}
 	return rows
 }
 
 func (r *Root) collectionRows(col app.Collection, depth int, search string) ([]treeRow, bool) {
 	key := "c:" + col.ID
-	row := treeRow{kind: rowCollection, depth: depth, id: key, name: col.Name, open: r.expanded[key]}
+	row := treeRow{kind: rowCollection, depth: depth, id: key, name: "根目录", open: r.expanded[key]}
 	rows := []treeRow{row}
-	matched := matches(search, col.Name, "")
+	// The collection name lives in the tab strip; the root row stands for the
+	// collection in search results only through its children.
+	matched := false
 	if r.expanded[key] || search != "" {
 		for _, child := range r.folderChildren(col.ID, "") {
 			childRows, ok := r.folderRows(col.ID, child, depth+1, search)
@@ -429,6 +442,7 @@ func (r *Root) reloadTree() {
 		return
 	}
 	r.tree = tree
+	r.ensureActiveCollection()
 }
 
 func (r *Root) openRequest(id string) {
@@ -444,6 +458,9 @@ func (r *Root) openRequest(id string) {
 	if err != nil || !ok {
 		r.err = fmt.Sprintf("读取请求失败: %v", err)
 		return
+	}
+	if meta, found := r.tree.Request(id); found {
+		r.activateCollection(meta.CollectionID)
 	}
 	ed := NewEditor(r, req)
 	r.tabs = append(r.tabs, ed)

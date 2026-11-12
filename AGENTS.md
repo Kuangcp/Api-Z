@@ -107,6 +107,7 @@ api-z 的存在理由就是这条链路。**不要退回全量字符串 + 每帧
 - OpenAPI 解析/合并走 `app/openapi.go` + `app/openapi_store.go`：tag→folder、确定性 ID、`METHOD normalizePath` syncKey。刷新只 upsert，不删除；保留本地 URL/Headers/Params/Body/Auth，只更新 name/method/meta/folder/sort。文件夹 ID 不得跨集合复用。
 - 树/列表选中、hover、空态要有明确视觉；破坏性操作必须二次确认（`ui/tree_actions.go` 的删除弹窗）。
 - 树 CRUD 走 `app/store_crud.go`；UI 动作/弹窗在 `ui/tree_actions.go`，不要直接拼 SQL。
+- 左侧集合 Tab 由 `ui/collection_tabs.go` 管理：`Root.activeCollection` / `colMRU`，树只渲染当前集合；Tab 放不下时保留最近使用项，其余进「更多集合」下拉。新增集合/导入/OpenAPI 刷新/打开其他集合的请求后必须调用 `activateCollection`。
 - 多标签最近切换用 `Root.mru`（`Ctrl+Tab` 在最近两个之间切换）；全局搜索用 `Ctrl+K`。
 - 变量补全：URL/Headers/Params 用 `ui.Popover` + `Element.TextSelection/SetTextSelection`；Body 用 `editor.OnCompletion`。插入格式统一 `{{key}}`，不要在每个输入框里各写一套。
 - 主题/快捷键：持久化到 `<config>/theme.json` / `keymap.json`；动作表在 `ui/keymap.go`，不要在 View 里散写 `c.Shortcut`。录制用 `detectChord`（`Context.KeyDown` + `Modifiers`），冲突时删除旧绑定。

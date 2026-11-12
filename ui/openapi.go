@@ -110,7 +110,7 @@ func (r *Root) startOpenAPIImport() {
 			r.openAPIOpen = false
 			r.expanded["c:"+id] = true
 			r.reloadTree()
-			r.selected = "c:" + id
+			r.activateCollection(id)
 			r.status = fmt.Sprintf("已导入 OpenAPI：%d 个接口 / %d 个文件夹", stats.Added, stats.Folders)
 			r.err = ""
 		})
@@ -164,7 +164,7 @@ func (r *Root) afterOpenAPIRefresh(collectionID string, stats app.OpenAPIMergeSt
 	}
 	r.expanded["c:"+collectionID] = true
 	r.reloadTree()
-	r.selected = "c:" + collectionID
+	r.activateCollection(collectionID)
 	r.status = fmt.Sprintf("OpenAPI 已刷新：新增 %d / 更新 %d 个接口", stats.Added, stats.Updated)
 	r.err = ""
 }

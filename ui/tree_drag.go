@@ -157,6 +157,18 @@ func (r *Root) applyTreeDrop(drag treeDrag, target treeRow, spot dropSpot) {
 		return
 	}
 	r.reloadTree()
+	switch targetKind {
+	case app.NodeCollection:
+		r.activateCollection(targetID)
+	case app.NodeFolder:
+		if folder, ok := r.folderByID(targetID); ok {
+			r.activateCollection(folder.CollectionID)
+		}
+	case app.NodeRequest:
+		if req, ok := r.tree.Request(targetID); ok {
+			r.activateCollection(req.CollectionID)
+		}
+	}
 	r.selected = selectionID(drag.Kind, drag.ID)
 	if drag.Kind == app.NodeRequest {
 		r.status = "已移动请求"

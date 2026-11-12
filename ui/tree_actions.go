@@ -113,7 +113,7 @@ func (r *Root) createCollection() {
 	}
 	r.expanded["c:"+id] = true
 	r.reloadTree()
-	r.selected = "c:" + id
+	r.activateCollection(id)
 	r.beginRename(app.NodeCollection, id, "新集合")
 }
 
@@ -124,6 +124,7 @@ func (r *Root) createFolder(collectionID, parentID string) {
 		return
 	}
 	r.expandPath(collectionID, parentID)
+	r.activateCollection(collectionID)
 	r.reloadTree()
 	r.selected = "f:" + id
 	r.beginRename(app.NodeFolder, id, "新文件夹")
@@ -331,7 +332,7 @@ func (r *Root) importPostmanFile(path string) (string, string, error) {
 	}
 	r.expanded["c:"+id] = true
 	r.reloadTree()
-	r.selected = "c:" + id
+	r.activateCollection(id)
 	r.status = "已导入集合「" + name + "」"
 	r.err = ""
 	return id, name, nil
@@ -370,7 +371,7 @@ func (r *Root) importPostmanDialog() {
 			}
 			r.expanded["c:"+id] = true
 			r.reloadTree()
-			r.selected = "c:" + id
+			r.activateCollection(id)
 			r.status = "已导入集合「" + portable.Name + "」"
 			r.err = ""
 		})
@@ -524,7 +525,9 @@ func (r *Root) newRequestFromSelection() {
 			r.createRequest(req.CollectionID, req.FolderID)
 		}
 	default:
-		if len(r.tree.Collections) > 0 {
+		if r.activeCollection != "" {
+			r.createRequest(r.activeCollection, "")
+		} else if len(r.tree.Collections) > 0 {
 			r.createRequest(r.tree.Collections[0].ID, "")
 		} else {
 			r.createCollection()

@@ -38,6 +38,9 @@ func (r *Root) curlTarget() (collectionID, folderID, label string, ok bool) {
 			return req.CollectionID, req.FolderID, label, true
 		}
 	}
+	if col, found := r.tree.Collection(r.activeCollection); found {
+		return col.ID, "", col.Name + "（根）", true
+	}
 	if len(r.tree.Collections) > 0 {
 		col := r.tree.Collections[0]
 		return col.ID, "", col.Name + "（根）", true

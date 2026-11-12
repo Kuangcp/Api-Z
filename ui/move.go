@@ -183,6 +183,7 @@ func (r *Root) applyMove() {
 	r.moveOpen = false
 	r.moveErr = ""
 	r.reloadTree()
+	r.activateCollection(r.moveCollection)
 	r.selected = selectionID(kind, id)
 	if kind == app.NodeRequest {
 		r.status = "已移动请求「" + r.moveName + "」"
