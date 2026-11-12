@@ -60,6 +60,9 @@ type Root struct {
 	envName  string
 	envNames []string
 
+	envMenuOpen bool
+	envGroup    int
+
 	sidebarWidth   float32
 	requestPercent float32
 	status         string
@@ -92,13 +95,15 @@ type Root struct {
 
 	settingsOpen bool
 	settingsTab  int
-	themePrefs   app.ThemePrefs
-	themePath    string
-	themeKey     string
-	sessionPath  string
-	baseTheme    *ui.Theme
-	accentHex    string
-	fontInput    string
+	appIcon      ui.ImageSource
+
+	themePrefs  app.ThemePrefs
+	themePath   string
+	themeKey    string
+	sessionPath string
+	baseTheme   *ui.Theme
+	accentHex   string
+	fontInput   string
 
 	keymap      map[string]string
 	keymapPath  string
@@ -153,6 +158,13 @@ func NewRoot(paths app.Paths, store *app.Store, tree app.Tree, env app.EnvState)
 
 func (r *Root) Attach(win *mygo.Window) { r.win = win }
 
+// SetAppIconPNG provides the icon drawn in the custom title bar.
+func (r *Root) SetAppIconPNG(png []byte) {
+	if src, err := ui.DecodeImage(png); err == nil {
+		r.appIcon = src
+	}
+}
+
 func (r *Root) View(c *ui.Context) {
 	r.applyTheme(c)
 	r.handleRecording(c)
@@ -160,7 +172,6 @@ func (r *Root) View(c *ui.Context) {
 	t := c.Theme()
 	ui.Column(c).Fill().Children(func() {
 		r.titleBar(c)
-		r.topBar(c)
 		ui.Split(c, &r.sidebarWidth, func() {
 			r.sidebar(c)
 		}, func() {
@@ -193,9 +204,27 @@ func (r *Root) titleBar(c *ui.Context) {
 	t := c.Theme()
 	ui.Row(c).Height(titleBarHeight).FillWidth().Padding(0, 12).Gap(8).
 		AlignItems(ui.Center).DragWindow().Background(t.Surface).Children(func() {
+		if r.appIcon != nil {
+			ui.Image(c, r.appIcon).Width(20).Height(20)
+		}
 		ui.Text(c, "Api-Z").FontSize(12.5).Bold()
-		ui.Text(c, "API 调试").FontSize(11).TextColor(t.TextMuted)
 		ui.Spacer(c)
+		r.envMenu(c)
+		if iconButtonPlain(c, iconSliders, "环境管理…").Clicked() {
+			r.openEnvManager()
+		}
+		iconMenuButton(c, iconDatabase, "数据目录", func(m *ui.Menu) {
+			if m.Item("Push 到 data/").Chosen() {
+				r.pushDataDir()
+			}
+			if m.Item("从 data/ Pull").Chosen() {
+				r.pullDataDir()
+			}
+		})
+		if iconButtonPlain(c, iconSettings, "设置").Clicked() {
+			r.settingsOpen = true
+		}
+		ui.Box(c).Width(6)
 		if r.win != nil {
 			if iconButtonPlain(c, iconMinus, "最小化").Clicked() {
 				r.win.Minimize()
@@ -212,48 +241,6 @@ func (r *Root) titleBar(c *ui.Context) {
 			}
 		}
 	})
-}
-
-func (r *Root) topBar(c *ui.Context) {
-	t := c.Theme()
-	ui.Row(c).Padding(6, 12).Gap(10).AlignItems(ui.Center).
-		BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
-		ui.Spacer(c)
-		ui.Text(c, "环境").FontSize(12).TextColor(t.TextMuted)
-		names := r.envNames
-		if len(names) == 0 {
-			names = []string{"（无环境）"}
-		}
-		before := r.envName
-		ui.Select(c, &r.envName, names).Label("环境").Width(220)
-		if r.envName != before {
-			r.activateEnv(r.envName)
-		}
-		if iconButton(c, iconSliders, "环境管理…").Clicked() {
-			r.openEnvManager()
-		}
-		iconMenuButton(c, iconDatabase, "数据目录", func(m *ui.Menu) {
-			if m.Item("Push 到 data/").Chosen() {
-				r.pushDataDir()
-			}
-			if m.Item("从 data/ Pull").Chosen() {
-				r.pullDataDir()
-			}
-		})
-		if iconButton(c, iconSettings, "设置").Clicked() {
-			r.settingsOpen = true
-		}
-	})
-}
-
-func (r *Root) activateEnv(name string) {
-	for _, e := range r.env.Environments {
-		if e.Name == name {
-			r.env.ActiveEnvironmentID = e.ID
-			_ = r.store.SaveEnvironments(r.env)
-			return
-		}
-	}
 }
 
 func (r *Root) sidebar(c *ui.Context) {

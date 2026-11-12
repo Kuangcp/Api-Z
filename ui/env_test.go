@@ -105,3 +105,64 @@ func TestEnvironmentManagerDeleteActive(t *testing.T) {
 		t.Fatalf("saved active = %#v", saved.Active())
 	}
 }
+
+func TestEnvCascadeMenu(t *testing.T) {
+	paths := app.PathsAt(t.TempDir(), t.TempDir())
+	if err := paths.Ensure(); err != nil {
+		t.Fatal(err)
+	}
+	store, _ := app.OpenStore(paths.DBPath)
+	defer store.Close()
+	env := app.EnvState{Version: 1, ActiveEnvironmentID: "a2", Environments: []app.Environment{
+		{ID: "a1", Name: "文献 - Dev", Tag: "文献"},
+		{ID: "a2", Name: "文献 - Prod", Tag: "文献"},
+		{ID: "b1", Name: "工作流 - Local", Tag: "工作流"},
+		{ID: "u1", Name: "Untagged"},
+	}}
+	_ = store.SaveEnvironments(env)
+	root := NewRoot(paths, store, app.Tree{}, env)
+	groups := root.envGroups()
+	if len(groups) != 3 || groups[0].Tag != "工作流" || groups[2].Tag != "其他" {
+		t.Fatalf("groups = %#v", groups)
+	}
+	if got := envNameWithoutTag("文献 - Prod", "文献"); got != "Prod" {
+		t.Fatalf("stripped name = %q", got)
+	}
+
+	tt := ui.NewTester(root.View, 1200, 800)
+	tt.Frame()
+	if err := tt.Click("Prod"); err != nil {
+		t.Fatalf("env button: %v", tt.Texts())
+	}
+	tt.Frame()
+	if !tt.HasText("工作流") || !tt.HasText("管理环境…") {
+		t.Fatalf("cascade menu = %v", tt.Texts())
+	}
+	if err := tt.Click("工作流"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if root.env.ActiveEnvironmentID != "b1" || root.envMenuOpen {
+		t.Fatalf("active = %q open=%v", root.env.ActiveEnvironmentID, root.envMenuOpen)
+	}
+	if root.envName != "工作流 - Local" {
+		t.Fatalf("envName = %q", root.envName)
+	}
+	saved, _ := store.LoadEnvironments()
+	if saved.ActiveEnvironmentID != "b1" {
+		t.Fatalf("saved active = %q", saved.ActiveEnvironmentID)
+	}
+
+	// The no-env row clears the active choice.
+	if err := tt.Click("Local"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if err := tt.Click("无环境"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if root.env.ActiveEnvironmentID != "" || root.envMenuOpen {
+		t.Fatalf("no env: active=%q open=%v", root.env.ActiveEnvironmentID, root.envMenuOpen)
+	}
+}

@@ -109,7 +109,8 @@ api-z 的存在理由就是这条链路。**不要退回全量字符串 + 每帧
 - 应用图标源文件 `assets/icon.svg`，`tools/genicon.sh` 用 rsvg-convert 生成 `icon-128/256/512.png`；`main.go` 嵌入 256 图标。不要手改 PNG。
 - OpenAPI 解析/合并走 `app/openapi.go` + `app/openapi_store.go`：tag→folder、确定性 ID、`METHOD normalizePath` syncKey。刷新只 upsert，不删除；保留本地 URL/Headers/Params/Body/Auth，只更新 name/method/meta/folder/sort。文件夹 ID 不得跨集合复用。
 - 树/列表选中、hover、空态要有明确视觉；破坏性操作必须二次确认（`ui/tree_actions.go` 的删除弹窗）。
-- 窗口为无边框自绘标题栏（`Root.titleBar`，38 DIP）：整条 `DragWindow`，右侧最小化/最大化/关闭；窗口底色用 `WindowBackgroundColor(themePrefs)`，圆角用 `WindowCornerRadius`。
+- 窗口为无边框自绘标题栏（`Root.titleBar`，38 DIP）：左侧应用图标 + Api-Z，右侧环境级联菜单/环境管理/数据目录/设置与窗口按钮；整条 `DragWindow`。窗口底色用 `WindowBackgroundColor(themePrefs)`，圆角用 `WindowCornerRadius`。
+- 环境切换走 `ui/env_menu.go`：按钮显示 `标签 | 环境名`，弹出两级菜单（左标签、右环境），不要退回平铺 `ui.Select`；无环境和“管理环境…”放在左列底部。
 - 主窗口用 `StateKey: "main"` + `windowStateStore` 恢复位置/大小/最大化；`session.json` 只存 `lastRequest`，打开/切换/关闭 Tab 后调用 `rememberActiveRequest`，缺失时保持空白态。
 - 树 CRUD 走 `app/store_crud.go`；UI 动作/弹窗在 `ui/tree_actions.go`，不要直接拼 SQL。
 - 左侧集合 Tab 由 `ui/collection_tabs.go` 管理：`Root.activeCollection` / `colMRU`，树只渲染当前集合；Tab 放不下时保留最近使用项，其余进「更多集合」下拉。新增集合/导入/OpenAPI 刷新/打开其他集合的请求后必须调用 `activateCollection`。

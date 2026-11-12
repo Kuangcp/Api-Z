@@ -98,6 +98,7 @@ func main() {
 	themePrefs := app.LoadThemePrefs(app.ThemePath(paths.ConfigDir))
 
 	root := ui.NewRoot(paths, store, tree, env)
+	root.SetAppIconPNG(appIconPNG)
 	mygo.App.WhenReady(func() {
 		win := mygo.NewWindow(mygo.WindowOptions{
 			Title:           "Api-Z",
