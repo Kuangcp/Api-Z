@@ -32,15 +32,15 @@ func TestRequestResponseSideBySide(t *testing.T) {
 	if !ok {
 		t.Fatal("send button not found")
 	}
-	raw, ok := tt.Find("Raw")
+	response, ok := tt.Find("未发送")
 	if !ok {
-		t.Fatal("raw view not found")
+		t.Fatal("response pane not found")
 	}
-	if raw.X <= send.X {
-		t.Fatalf("response is not to the right: send=%v raw=%v", send, raw)
+	if response.X <= send.X {
+		t.Fatalf("response is not to the right: send=%v response=%v", send, response)
 	}
-	if raw.Y > send.Y+80 {
-		t.Fatalf("response is below the request: send=%v raw=%v", send, raw)
+	if response.Y > send.Y+80 {
+		t.Fatalf("response is below the request: send=%v response=%v", send, response)
 	}
 }
 

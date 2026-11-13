@@ -36,6 +36,9 @@ func (ed *Editor) responsePane(c *ui.Context) {
 		ed.modelVer = snap.ModelVer
 		ed.modelLines = strings.Split(text, "\n")
 	}
+	if ed.jsonEd != nil {
+		ed.jsonEd.Font = ed.root.bodyEditorFont()
+	}
 	if ed.jsonSource != "" && ed.jsonSource != snap.SpoolPath {
 		ed.jsonOpen = false
 		ed.jsonEd = nil
@@ -63,7 +66,11 @@ func (ed *Editor) responsePane(c *ui.Context) {
 			editor.View(c, ed.jsonEd).Grow(1).FillWidth()
 			return
 		}
-		switch ed.StreamMode {
+		mode := ed.StreamMode
+		if !app.IsSSEContentType(snap.ContentType) {
+			mode = 0
+		}
+		switch mode {
 		case 0:
 			ed.rawView(c, sess, snap)
 		case 1:
@@ -154,16 +161,18 @@ func (ed *Editor) responseTabs(c *ui.Context, sess *app.Session, snap app.Sessio
 			if ui.Button(c, "JSON").Disabled(!canJSON).Clicked() {
 				ed.toggleJSON(sess, snap)
 			}
-			modes := []string{"Raw", "Model", "AGUI"}
-			mode := ed.StreamMode
-			if mode < 0 || mode >= len(modes) {
-				mode = 0
-			}
-			cur := modes[mode]
-			if ui.Select(c, &cur, modes).Label("响应视图").Width(110).Changed() {
-				for i, name := range modes {
-					if name == cur {
-						ed.StreamMode = i
+			if app.IsSSEContentType(snap.ContentType) {
+				modes := []string{"Raw", "Model", "AGUI"}
+				mode := ed.StreamMode
+				if mode < 0 || mode >= len(modes) {
+					mode = 0
+				}
+				cur := modes[mode]
+				if ui.Select(c, &cur, modes).Label("响应视图").Width(110).Changed() {
+					for i, name := range modes {
+						if name == cur {
+							ed.StreamMode = i
+						}
 					}
 				}
 			}
@@ -244,6 +253,7 @@ func (ed *Editor) historyPane(c *ui.Context) {
 			return
 		}
 		if ed.histJSON && ed.histJSONEd != nil {
+			ed.histJSONEd.Font = ed.root.bodyEditorFont()
 			editor.View(c, ed.histJSONEd).Grow(1).FillWidth()
 			return
 		}
@@ -252,7 +262,8 @@ func (ed *Editor) historyPane(c *ui.Context) {
 			if line == "" {
 				line = " "
 			}
-			ui.Text(c, clipLine(line, 4096)).Font("monospace").FontSize(12).SingleLine()
+			ui.Text(c, clipLine(line, 4096)).Font(ed.root.bodyFontFamily("monospace")).
+				FontSize(ed.root.bodyTextSize(12)).SingleLine()
 		}).Grow(1)
 	})
 }
@@ -273,7 +284,7 @@ func (ed *Editor) openJSON(sess *app.Session, snap app.SessionSnapshot) {
 	}
 	b := editor.NewBuffer(raw)
 	b.SetLanguage(editor.LanguageFor("response.json"))
-	ed.jsonEd = &editor.State{Buffer: b, ReadOnly: true}
+	ed.jsonEd = &editor.State{Buffer: b, ReadOnly: true, Font: ed.root.bodyEditorFont()}
 	ed.jsonSource = snap.SpoolPath
 	ed.jsonOpen = true
 }
@@ -342,7 +353,8 @@ func (ed *Editor) rawView(c *ui.Context, sess *app.Session, snap app.SessionSnap
 					}
 					return
 				}
-				ui.Text(c, clipLine(line, 4096)).Font("monospace").FontSize(12).SingleLine()
+				ui.Text(c, clipLine(line, 4096)).Font(ed.root.bodyFontFamily("monospace")).
+					FontSize(ed.root.bodyTextSize(12)).SingleLine()
 			}).Grow(1).Children(func() {
 				if n == 0 {
 					msg := "等待响应…"
@@ -367,22 +379,24 @@ func (ed *Editor) rawView(c *ui.Context, sess *app.Session, snap app.SessionSnap
 // prefix, while the payload keeps the normal text color.
 func (ed *Editor) sseLine(c *ui.Context, line string) {
 	t := c.Theme()
+	family := ed.root.bodyFontFamily("monospace")
+	size := ed.root.bodyTextSize(12)
 	ts, rest := splitSSETimestamp(line)
 	if ts != "" {
-		ui.Text(c, ts).Font("monospace").FontSize(12).TextColor(t.TextMuted)
+		ui.Text(c, ts).Font(family).FontSize(size).TextColor(t.TextMuted)
 		ui.Box(c).Width(4)
 	}
 	switch {
 	case rest == "":
-		ui.Text(c, " ").Font("monospace").FontSize(12)
+		ui.Text(c, " ").Font(family).FontSize(size)
 	case strings.HasPrefix(rest, "data:"):
-		ui.Text(c, "data:").Font("monospace").FontSize(12).TextColor(t.TextMuted)
+		ui.Text(c, "data:").Font(family).FontSize(size).TextColor(t.TextMuted)
 		ui.Box(c).Width(4)
 		payload := strings.TrimPrefix(rest, "data:")
 		payload = strings.TrimPrefix(payload, " ")
-		ui.Text(c, clipLine(payload, 4096)).Font("monospace").FontSize(12).SingleLine()
+		ui.Text(c, clipLine(payload, 4096)).Font(family).FontSize(size).SingleLine()
 	default:
-		ui.Text(c, clipLine(rest, 4096)).Font("monospace").FontSize(12).SingleLine()
+		ui.Text(c, clipLine(rest, 4096)).Font(family).FontSize(size).SingleLine()
 	}
 }
 
@@ -433,7 +447,7 @@ func (ed *Editor) ensureEventEditor(sess *app.Session, idx int) {
 	}
 	b := editor.NewBuffer(buf.String())
 	b.SetLanguage(editor.LanguageFor("response.json"))
-	ed.eventEd = &editor.State{Buffer: b, ReadOnly: true}
+	ed.eventEd = &editor.State{Buffer: b, ReadOnly: true, Font: ed.root.bodyEditorFont()}
 }
 
 func (ed *Editor) sseEventPanel(c *ui.Context, sess *app.Session, snap app.SessionSnapshot) {
@@ -460,6 +474,7 @@ func (ed *Editor) sseEventPanel(c *ui.Context, sess *app.Session, snap app.Sessi
 				c.Toast("已复制事件 JSON")
 			}
 		})
+		ed.eventEd.Font = ed.root.bodyEditorFont()
 		editor.View(c, ed.eventEd).Grow(1).FillWidth()
 	})
 }
@@ -476,7 +491,8 @@ func (ed *Editor) modelView(c *ui.Context, snap app.SessionSnapshot) {
 		if line == "" {
 			line = " "
 		}
-		ui.Text(c, clipLine(line, 4096)).Font("monospace").FontSize(12).SingleLine()
+		ui.Text(c, clipLine(line, 4096)).Font(ed.root.bodyFontFamily("monospace")).
+			FontSize(ed.root.bodyTextSize(12)).SingleLine()
 	}).Grow(1)
 }
 

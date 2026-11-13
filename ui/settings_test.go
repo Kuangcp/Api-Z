@@ -96,7 +96,8 @@ func TestFontSettings(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	if !tt.HasText("界面字体") || !tt.HasText("界面缩放") {
+	if !tt.HasText("界面字体") || !tt.HasText("界面缩放") ||
+		!tt.HasText("左侧请求树") || !tt.HasText("请求 / 响应 Body") {
 		t.Fatalf("font settings not shown: %v", tt.Texts())
 	}
 
@@ -202,5 +203,33 @@ func TestThemeSchemeAndRadiusSettings(t *testing.T) {
 	}
 	if bg := WindowBackgroundColor(root.themePrefs); !strings.Contains(bg, "#edf4fb") {
 		t.Fatalf("window bg = %q", bg)
+	}
+}
+
+func TestTreeAndBodyFontPreferences(t *testing.T) {
+	store, paths := collectionTestStore(t)
+	cid, _ := store.CreateCollection("Demo")
+	rid, _ := store.CreateRequest(cid, "", "Echo")
+	_ = store.SaveRequest(app.Request{ID: rid, Name: "Echo", Method: "GET", URL: "https://example.com", BodyText: `{"a":1}`})
+	tree, _ := store.LoadTree()
+	root := NewRoot(paths, store, tree, app.EnvState{Version: 1})
+	root.themePrefs.TreeFont = "Inter"
+	root.themePrefs.TreeFontSize = 16
+	root.themePrefs.BodyFont = "JetBrains Mono"
+	root.themePrefs.BodyFontSize = 15
+	root.saveThemePrefs()
+	got := app.LoadThemePrefs(root.themePath)
+	if got.TreeFont != "Inter" || got.TreeFontSize != 16 || got.BodyFont != "JetBrains Mono" || got.BodyFontSize != 15 {
+		t.Fatalf("persisted = %#v", got)
+	}
+	root.openRequest(rid)
+	tt := ui.NewTester(root.View, 1200, 800)
+	tt.Frame()
+	if root.treeTextSize(12.5) != 16 {
+		t.Fatalf("tree size = %v", root.treeTextSize(12.5))
+	}
+	ed := root.tabs[0]
+	if ed.bodyEd == nil || ed.bodyEd.Font.Family != "JetBrains Mono" || ed.bodyEd.Font.Size != 15 {
+		t.Fatalf("body font = %#v", ed.bodyEd)
 	}
 }

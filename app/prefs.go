@@ -18,6 +18,11 @@ type ThemePrefs struct {
 	Scale  int    `json:"scale,omitempty"`
 	Scheme string `json:"scheme,omitempty"`
 	Radius int    `json:"radius,omitempty"`
+
+	TreeFont     string `json:"treeFont,omitempty"`
+	TreeFontSize int    `json:"treeFontSize,omitempty"`
+	BodyFont     string `json:"bodyFont,omitempty"`
+	BodyFontSize int    `json:"bodyFontSize,omitempty"`
 }
 
 // Theme scale bounds, in percent. Zero means the default.
@@ -36,6 +41,14 @@ func NormalizeThemePrefs(p ThemePrefs) ThemePrefs {
 		p.Accent = ""
 	}
 	p.Font = strings.TrimSpace(p.Font)
+	p.TreeFont = strings.TrimSpace(p.TreeFont)
+	p.BodyFont = strings.TrimSpace(p.BodyFont)
+	if p.TreeFontSize < 0 || p.TreeFontSize > 32 {
+		p.TreeFontSize = 0
+	}
+	if p.BodyFontSize < 0 || p.BodyFontSize > 32 {
+		p.BodyFontSize = 0
+	}
 	switch strings.ToLower(strings.TrimSpace(p.Scheme)) {
 	case "", "default":
 		p.Scheme = ""

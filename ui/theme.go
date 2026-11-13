@@ -81,6 +81,57 @@ func (r *Root) resetTheme() {
 
 var themeScaleSteps = []int{90, 100, 110, 125}
 
+func (r *Root) treeFontFamily() string { return strings.TrimSpace(r.themePrefs.TreeFont) }
+
+func (r *Root) treeTextSize(base float32) float32 {
+	if n := r.themePrefs.TreeFontSize; n > 0 {
+		return float32(n)
+	}
+	return base
+}
+
+func (r *Root) treeMethodSize() float32 {
+	if n := r.themePrefs.TreeFontSize; n > 0 {
+		size := float32(n) - 3
+		if size < 8.5 {
+			size = 8.5
+		}
+		return size
+	}
+	return 9.5
+}
+
+func (r *Root) treeMethodWidth() float32 {
+	if n := r.themePrefs.TreeFontSize; n > 0 {
+		w := float32(n) * 3.6
+		if w > 42 {
+			return w
+		}
+	}
+	return 42
+}
+
+func (r *Root) bodyFontFamily(fallback string) string {
+	if f := strings.TrimSpace(r.themePrefs.BodyFont); f != "" {
+		return f
+	}
+	return fallback
+}
+
+func (r *Root) bodyTextSize(base float32) float32 {
+	if n := r.themePrefs.BodyFontSize; n > 0 {
+		return float32(n)
+	}
+	return base
+}
+
+func (r *Root) bodyEditorFont() ui.Font {
+	return ui.Font{
+		Family: strings.TrimSpace(r.themePrefs.BodyFont),
+		Size:   r.bodyTextSize(13),
+	}
+}
+
 func themeScaleFactor(scale int) float32 {
 	if scale <= 0 {
 		scale = app.DefaultThemeScale

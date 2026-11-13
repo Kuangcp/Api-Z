@@ -103,4 +103,7 @@ func TestNonJSONResponseStaysRaw(t *testing.T) {
 	if !tt.HasText("plain text") {
 		t.Fatalf("raw body = %v", tt.Texts())
 	}
+	if tt.HasText("AGUI") {
+		t.Fatalf("non-SSE response showed the SSE view switch: %v", tt.Texts())
+	}
 }

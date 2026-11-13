@@ -165,6 +165,13 @@ func HeaderValue(hs []Header, name string) string {
 	return ""
 }
 
+// IsSSEContentType reports whether the response header declares an SSE
+// stream; sniffed bodies do not count for the view switch.
+func IsSSEContentType(contentType string) bool {
+	ct := strings.TrimSpace(strings.Split(contentType, ";")[0])
+	return strings.EqualFold(ct, "text/event-stream")
+}
+
 func IsJSONContentType(contentType string) bool {
 	ct := strings.ToLower(contentType)
 	return strings.Contains(ct, "json") || strings.Contains(ct, "+json")

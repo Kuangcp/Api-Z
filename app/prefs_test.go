@@ -9,7 +9,8 @@ import (
 func TestThemePrefsRoundTrip(t *testing.T) {
 	dir := t.TempDir()
 	path := ThemePath(dir)
-	p := ThemePrefs{Mode: 2, Accent: "#22c55e", Font: "Noto Sans CJK SC", Scale: 110}
+	p := ThemePrefs{Mode: 2, Accent: "#22c55e", Font: "Noto Sans CJK SC", Scale: 110,
+		TreeFont: "Inter", TreeFontSize: 12, BodyFont: "JetBrains Mono", BodyFontSize: 14}
 	if err := SaveThemePrefs(path, p); err != nil {
 		t.Fatal(err)
 	}
@@ -22,6 +23,9 @@ func TestThemePrefsRoundTrip(t *testing.T) {
 	}
 	if n := NormalizeThemePrefs(ThemePrefs{Scale: 500, Font: "  "}); n.Scale != MaxThemeScale || n.Font != "" {
 		t.Fatalf("high scale = %#v", n)
+	}
+	if n := NormalizeThemePrefs(ThemePrefs{TreeFontSize: 99, BodyFontSize: -1, TreeFont: "  "}); n.TreeFontSize != 0 || n.BodyFontSize != 0 || n.TreeFont != "" {
+		t.Fatalf("font normalize = %#v", n)
 	}
 	if err := SaveThemePrefs(path, ThemePrefs{Scale: 500}); err != nil {
 		t.Fatal(err)

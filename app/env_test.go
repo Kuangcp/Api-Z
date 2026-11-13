@@ -36,3 +36,16 @@ func TestEnvironmentColorHintAndClean(t *testing.T) {
 		t.Fatalf("clean colors = %#v", clean.Environments)
 	}
 }
+
+func TestIsSSEContentType(t *testing.T) {
+	for _, ct := range []string{"text/event-stream", "text/event-stream; charset=utf-8", "TEXT/EVENT-STREAM"} {
+		if !IsSSEContentType(ct) {
+			t.Fatalf("%q not SSE", ct)
+		}
+	}
+	for _, ct := range []string{"application/json", "text/plain", ""} {
+		if IsSSEContentType(ct) {
+			t.Fatalf("%q marked SSE", ct)
+		}
+	}
+}

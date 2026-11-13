@@ -231,7 +231,7 @@ api-z 使用自己的数据目录与 SQLite（WAL）：
 
 第五批（主题与稳定性）：
 - 16 槽自定义主题、内置主题集、主题管理/另存/导入导出、语法色。
-- 请求/响应独立字号。
+- 请求/响应独立字号（已完成，另支持请求树独立字体/字号）。
 - ErrorBoundary 崩溃兜底页。
 - （不搬）api-x 的响应全内存/截断、禁止重定向、方法限制、无 API Key query 注入、压测。
 
@@ -294,6 +294,7 @@ go run . -migrate -api-x-home ~/.local/share/api-x -data-dir /tmp/api-z-smoke
 - [x] P6 第二批（部分）：SSE Raw 时间戳与事件 JSON 详情
 - [x] P6 第四批（部分）：环境选择器语义色与手动颜色配置
 - [x] P6 第五批（部分）：请求日志、goroutine/UI panic 兜底与堆栈记录
+- [x] P6 第五批（部分）：请求树与请求/响应 Body 独立字体/字号
 
 ### 已实测
 

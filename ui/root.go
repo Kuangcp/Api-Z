@@ -108,13 +108,15 @@ type Root struct {
 	nodeSettingsErr      string
 	appIcon              ui.ImageSource
 
-	themePrefs  app.ThemePrefs
-	themePath   string
-	themeKey    string
-	sessionPath string
-	baseTheme   *ui.Theme
-	accentHex   string
-	fontInput   string
+	themePrefs    app.ThemePrefs
+	themePath     string
+	themeKey      string
+	sessionPath   string
+	baseTheme     *ui.Theme
+	accentHex     string
+	fontInput     string
+	treeFontInput string
+	bodyFontInput string
 
 	keymap      map[string]string
 	keymapPath  string
@@ -160,6 +162,8 @@ func NewRoot(paths app.Paths, store *app.Store, tree app.Tree, env app.EnvState)
 	r.themePrefs = app.LoadThemePrefs(r.themePath)
 	r.accentHex = r.themePrefs.Accent
 	r.fontInput = r.themePrefs.Font
+	r.treeFontInput = r.themePrefs.TreeFont
+	r.bodyFontInput = r.themePrefs.BodyFont
 	r.keymap = mergedKeymap(app.LoadKeymap(r.keymapPath))
 	r.ensureActiveCollection()
 	r.restoreLastRequest()
@@ -328,6 +332,13 @@ func (r *Root) sidebar(c *ui.Context) {
 func (r *Root) treeRow(c *ui.Context, row treeRow) {
 	t := c.Theme()
 	selected := r.selected == row.id
+	text := func(s string, size float32) ui.Element {
+		e := ui.Text(c, s).FontSize(size)
+		if f := r.treeFontFamily(); f != "" {
+			e = e.Font(f)
+		}
+		return e
+	}
 	btn := ui.ButtonBase(c).Label(rowLabel(row)).Justify(ui.Start).
 		Padding(2, 6).PaddingStart(4 + float32(row.depth)*14).Radius(5)
 	if selected {
@@ -346,7 +357,7 @@ func (r *Root) treeRow(c *ui.Context, row treeRow) {
 			}
 			ui.Icon(c, chevron).FontSize(13).TextColor(t.TextMuted)
 			ui.Icon(c, folder).FontSize(14).TextColor(t.TextMuted)
-			ui.Text(c, row.name).FontSize(12.5).Bold().SingleLine().Grow(1)
+			text(row.name, r.treeTextSize(12.5)).Bold().SingleLine().Grow(1)
 		case rowFolder:
 			chevron := iconChevronRight
 			folder := iconFolder
@@ -356,15 +367,16 @@ func (r *Root) treeRow(c *ui.Context, row treeRow) {
 			}
 			ui.Icon(c, chevron).FontSize(13).TextColor(t.TextMuted)
 			ui.Icon(c, folder).FontSize(14).TextColor(t.TextMuted)
-			ui.Text(c, row.name).FontSize(12.5).SingleLine().Grow(1)
+			text(row.name, r.treeTextSize(12.5)).SingleLine().Grow(1)
 		case rowRequest:
 			if r.requestRunning(row.id) {
 				ui.Spinner(c).FontSize(11).Label("请求中")
 			} else {
 				ui.Text(c, " ").FontSize(10)
 			}
-			ui.Text(c, row.method).FontSize(9.5).Bold().TextColor(methodColor(c, row.method)).Width(42)
-			ui.Text(c, row.name).FontSize(12.5).SingleLine().Grow(1)
+			text(row.method, r.treeMethodSize()).Bold().TextColor(methodColor(c, row.method)).
+				Width(r.treeMethodWidth())
+			text(row.name, r.treeTextSize(12.5)).SingleLine().Grow(1)
 		}
 	})
 	if btn.Clicked() {

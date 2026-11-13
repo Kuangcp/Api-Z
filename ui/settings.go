@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"strconv"
+
 	"github.com/egoist/mygo/ui"
 
 	"api-z/app"
@@ -99,41 +101,125 @@ func (r *Root) themeSettings(c *ui.Context, t *ui.Theme) {
 }
 
 func (r *Root) fontSettings(c *ui.Context, t *ui.Theme) {
-	ui.Text(c, "界面字体").FontSize(12).TextColor(t.TextMuted)
-	if ui.TextInput(c, &r.fontInput).
-		Placeholder("留空使用系统字体，如 Noto Sans CJK SC").
-		Label("界面字体").Changed() {
-		r.themePrefs.Font = r.fontInput
-		r.saveThemePrefs()
-	}
-	ui.Text(c, "字体名需与系统已安装字体一致；原始响应仍使用等宽字体。").
-		FontSize(11).TextColor(t.TextMuted)
-
-	ui.Text(c, "界面缩放").FontSize(12).TextColor(t.TextMuted)
-	idx := themeScaleIndex(r.themePrefs.Scale)
-	before := idx
-	ui.Segmented(c, &idx, "90%", "100%", "110%", "125%").Label("界面缩放")
-	if idx != before {
-		r.themePrefs.Scale = themeScaleSteps[idx]
-		r.saveThemePrefs()
-	}
-	ui.Text(c, "缩放同时放大字体、图标与控件，立即生效。").
-		FontSize(11).TextColor(t.TextMuted)
-
-	ui.Text(c, "预览").FontSize(12).TextColor(t.TextMuted)
-	ui.Row(c).Gap(8).Padding(12).Radius(8).Background(t.Surface).Children(func() {
-		ui.PrimaryButton(c, "主按钮")
-		ui.Button(c, "次按钮")
-		ui.Text(c, "正文示例：GET /users/{{id}}").TextColor(t.Text)
-	})
-	ui.Row(c).Gap(8).Children(func() {
-		if ui.Button(c, "恢复默认字体与缩放").Clicked() {
-			r.fontInput = ""
-			r.themePrefs.Font = ""
-			r.themePrefs.Scale = app.DefaultThemeScale
+	ui.Scroll(c).Height(480).Children(func() {
+		ui.Text(c, "界面字体").FontSize(12).TextColor(t.TextMuted)
+		if ui.TextInput(c, &r.fontInput).
+			Placeholder("留空使用系统字体，如 Noto Sans CJK SC").
+			Label("界面字体").Changed() {
+			r.themePrefs.Font = r.fontInput
 			r.saveThemePrefs()
 		}
+		ui.Text(c, "字体名需与系统已安装字体一致；原始响应仍使用等宽字体。").
+			FontSize(11).TextColor(t.TextMuted)
+
+		ui.Text(c, "界面缩放").FontSize(12).TextColor(t.TextMuted)
+		idx := themeScaleIndex(r.themePrefs.Scale)
+		before := idx
+		ui.Segmented(c, &idx, "90%", "100%", "110%", "125%").Label("界面缩放")
+		if idx != before {
+			r.themePrefs.Scale = themeScaleSteps[idx]
+			r.saveThemePrefs()
+		}
+		ui.Text(c, "缩放同时放大字体、图标与控件，立即生效。").
+			FontSize(11).TextColor(t.TextMuted)
+
+		ui.Box(c).Height(1).Margin(6, 0).Background(t.Border)
+		ui.Text(c, "左侧请求树").FontSize(12).TextColor(t.TextMuted)
+		if ui.TextInput(c, &r.treeFontInput).
+			Placeholder("留空跟随界面字体").
+			Label("请求树字体").Changed() {
+			r.themePrefs.TreeFont = r.treeFontInput
+			r.saveThemePrefs()
+		}
+		ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+			ui.Text(c, "字号").Width(64).TextColor(t.TextMuted)
+			if size, changed := fontSizeSelect(c, r.themePrefs.TreeFontSize); changed {
+				r.themePrefs.TreeFontSize = size
+				r.saveThemePrefs()
+			}
+			ui.Text(c, "默认 12.5"+"；请求方法徽标会小 3px").FontSize(11).TextColor(t.TextMuted)
+		})
+
+		ui.Text(c, "请求 / 响应 Body").FontSize(12).TextColor(t.TextMuted)
+		if ui.TextInput(c, &r.bodyFontInput).
+			Placeholder("留空使用等宽字体").
+			Label("Body 字体").Changed() {
+			r.themePrefs.BodyFont = r.bodyFontInput
+			r.saveThemePrefs()
+		}
+		ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+			ui.Text(c, "字号").Width(64).TextColor(t.TextMuted)
+			if size, changed := fontSizeSelect(c, r.themePrefs.BodyFontSize); changed {
+				r.themePrefs.BodyFontSize = size
+				r.saveThemePrefs()
+			}
+			ui.Text(c, "默认 13"+"；应用到请求 Body、Raw/Model 与 JSON 视图").FontSize(11).TextColor(t.TextMuted)
+		})
+
+		ui.Text(c, "预览").FontSize(12).TextColor(t.TextMuted)
+		ui.Row(c).Gap(8).Padding(12).Radius(8).Background(t.Surface).Children(func() {
+			ui.PrimaryButton(c, "主按钮")
+			ui.Button(c, "次按钮")
+			tree := ui.Text(c, "GET  /users/{{id}}").FontSize(r.treeTextSize(12.5))
+			if f := r.treeFontFamily(); f != "" {
+				tree.Font(f)
+			}
+			ui.Text(c, "正文示例").TextColor(t.Text)
+		})
+		ui.Row(c).Gap(8).Children(func() {
+			if ui.Button(c, "恢复默认字体与缩放").Clicked() {
+				r.fontInput = ""
+				r.treeFontInput = ""
+				r.bodyFontInput = ""
+				r.themePrefs.Font = ""
+				r.themePrefs.Scale = app.DefaultThemeScale
+				r.themePrefs.TreeFont = ""
+				r.themePrefs.TreeFontSize = 0
+				r.themePrefs.BodyFont = ""
+				r.themePrefs.BodyFontSize = 0
+				r.saveThemePrefs()
+			}
+		})
 	})
+}
+
+var fontSizeOptions = []int{0, 10, 11, 12, 13, 14, 16, 18, 20}
+
+func fontSizeSelect(c *ui.Context, current int) (int, bool) {
+	options := append([]int(nil), fontSizeOptions...)
+	found := false
+	for _, v := range options {
+		if v == current {
+			found = true
+			break
+		}
+	}
+	if !found {
+		options = append(options, current)
+	}
+	labels := make([]string, 0, len(options))
+	for i, v := range options {
+		if i == 0 {
+			labels = append(labels, "默认")
+		} else {
+			labels = append(labels, strconv.Itoa(v))
+		}
+	}
+	cur := "默认"
+	if current > 0 {
+		cur = strconv.Itoa(current)
+	}
+	if !ui.Select(c, &cur, labels).Label("字号").Width(100).Changed() {
+		return current, false
+	}
+	if cur == "默认" {
+		return 0, true
+	}
+	n, err := strconv.Atoi(cur)
+	if err != nil {
+		return 0, true
+	}
+	return n, true
 }
 
 func (r *Root) keymapSettings(c *ui.Context, t *ui.Theme) {

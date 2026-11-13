@@ -222,6 +222,7 @@ func (ed *Editor) requestPane(c *ui.Context) {
 		case 0:
 			ed.bodyToolbar(c)
 			st := ed.bodyState()
+			st.Font = ed.root.bodyEditorFont()
 			editor.View(c, st).Grow(1).FillWidth()
 			if st.Buffer.Version() != ed.bodyVer {
 				ed.Dirty = true
