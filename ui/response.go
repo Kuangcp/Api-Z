@@ -148,7 +148,19 @@ func (ed *Editor) responseTabs(c *ui.Context, sess *app.Session, snap app.Sessio
 			if ui.Button(c, "JSON").Disabled(!canJSON).Clicked() {
 				ed.toggleJSON(sess, snap)
 			}
-			ui.Segmented(c, &ed.StreamMode, "Raw", "Model", "AGUI").Label("响应视图")
+			modes := []string{"Raw", "Model", "AGUI"}
+			mode := ed.StreamMode
+			if mode < 0 || mode >= len(modes) {
+				mode = 0
+			}
+			cur := modes[mode]
+			if ui.Select(c, &cur, modes).Label("响应视图").Width(110).Changed() {
+				for i, name := range modes {
+					if name == cur {
+						ed.StreamMode = i
+					}
+				}
+			}
 		}
 	})
 }
@@ -263,21 +275,158 @@ func (ed *Editor) rawView(c *ui.Context, sess *app.Session, snap app.SessionSnap
 		return
 	}
 	n := snap.LineCount
+	if snap.IsSSE && ed.SelectedEvent >= snap.Events {
+		ed.SelectedEvent = -1
+		ed.eventIdx = -1
+		ed.eventEd = nil
+	}
+	if snap.IsSSE && ed.SelectedEvent >= 0 {
+		ed.ensureEventEditor(sess, ed.SelectedEvent)
+	}
 	ed.RawList.FollowEnd = snap.Running
-	ui.List(c, &ed.RawList, n, func(i int) {
-		line := sess.Line(i)
-		if line == "" {
-			line = " "
-		}
-		ui.Text(c, clipLine(line, 4096)).Font("monospace").FontSize(12).SingleLine()
-	}).Grow(1).Children(func() {
-		if n == 0 {
-			msg := "等待响应…"
-			if snap.Done {
-				msg = "响应为空"
+	ui.Column(c).Fill().Children(func() {
+		ui.List(c, &ed.RawList, n, func(i int) {
+			line := sess.Line(i)
+			if line == "" {
+				line = " "
 			}
-			ui.Text(c, msg).Padding(12).TextColor(t.TextMuted)
+			event := -1
+			if snap.IsSSE {
+				event = sess.LineEvent(i)
+			}
+			if event >= 0 {
+				selected := event == ed.SelectedEvent
+				btn := ui.ButtonBase(c).Label("SSE 事件行").Justify(ui.Start).Padding(0, 2).Radius(3)
+				if selected {
+					btn.Background(t.Accent.Alpha(0.18))
+				} else if btn.Hovered() {
+					btn.Background(t.SurfaceHover)
+				}
+				btn.Children(func() {
+					ed.sseLine(c, line)
+				})
+				if btn.Clicked() {
+					if ed.SelectedEvent == event {
+						ed.SelectedEvent = -1
+						ed.eventIdx = -1
+						ed.eventEd = nil
+					} else {
+						ed.SelectedEvent = event
+						ed.eventIdx = -1
+						ed.eventEd = nil
+					}
+				}
+				return
+			}
+			ui.Text(c, clipLine(line, 4096)).Font("monospace").FontSize(12).SingleLine()
+		}).Grow(1).Children(func() {
+			if n == 0 {
+				msg := "等待响应…"
+				if snap.Done {
+					msg = "响应为空"
+				}
+				ui.Text(c, msg).Padding(12).TextColor(t.TextMuted)
+			}
+		})
+		if snap.IsSSE && ed.SelectedEvent >= 0 && ed.eventEd != nil {
+			ed.sseEventPanel(c, sess, snap)
 		}
+	})
+}
+
+// sseLine renders one SSE display line with a muted timestamp and data:
+// prefix, while the payload keeps the normal text color.
+func (ed *Editor) sseLine(c *ui.Context, line string) {
+	t := c.Theme()
+	ts, rest := splitSSETimestamp(line)
+	if ts != "" {
+		ui.Text(c, ts).Font("monospace").FontSize(12).TextColor(t.TextMuted)
+		ui.Box(c).Width(4)
+	}
+	switch {
+	case rest == "":
+		ui.Text(c, " ").Font("monospace").FontSize(12)
+	case strings.HasPrefix(rest, "data:"):
+		ui.Text(c, "data:").Font("monospace").FontSize(12).TextColor(t.TextMuted)
+		ui.Box(c).Width(4)
+		payload := strings.TrimPrefix(rest, "data:")
+		payload = strings.TrimPrefix(payload, " ")
+		ui.Text(c, clipLine(payload, 4096)).Font("monospace").FontSize(12).SingleLine()
+	default:
+		ui.Text(c, clipLine(rest, 4096)).Font("monospace").FontSize(12).SingleLine()
+	}
+}
+
+func splitSSETimestamp(line string) (string, string) {
+	if len(line) < 13 {
+		return "", line
+	}
+	for i := 0; i < 12; i++ {
+		ch := line[i]
+		switch i {
+		case 2, 5:
+			if ch != ':' {
+				return "", line
+			}
+		case 8:
+			if ch != '.' {
+				return "", line
+			}
+		default:
+			if ch < '0' || ch > '9' {
+				return "", line
+			}
+		}
+	}
+	if line[12] != ' ' {
+		return "", line
+	}
+	return line[:12], line[13:]
+}
+
+func (ed *Editor) ensureEventEditor(sess *app.Session, idx int) {
+	if ed.eventIdx == idx {
+		return
+	}
+	ed.eventIdx = idx
+	ed.eventEd = nil
+	ev, ok := sess.Event(idx)
+	if !ok {
+		return
+	}
+	raw := strings.TrimSpace(ev.Data)
+	if raw == "" || !json.Valid([]byte(raw)) {
+		return
+	}
+	var buf bytes.Buffer
+	if err := json.Indent(&buf, []byte(raw), "", "  "); err != nil {
+		return
+	}
+	b := editor.NewBuffer(buf.String())
+	b.SetLanguage(editor.LanguageFor("response.json"))
+	ed.eventEd = &editor.State{Buffer: b, ReadOnly: true}
+}
+
+func (ed *Editor) sseEventPanel(c *ui.Context, sess *app.Session, snap app.SessionSnapshot) {
+	t := c.Theme()
+	ev, ok := sess.Event(ed.SelectedEvent)
+	if !ok {
+		return
+	}
+	ui.Column(c).Height(220).BorderWidth(1, 0, 0, 0).BorderColor(t.Border).Children(func() {
+		ui.Row(c).Padding(4, 8).Gap(8).AlignItems(ui.Center).Children(func() {
+			ui.Text(c, fmt.Sprintf("Event #%d", ed.SelectedEvent+1)).FontSize(11.5).Bold()
+			if !ev.At.IsZero() {
+				ui.Text(c, ev.At.Format("15:04:05.000")).Font("monospace").FontSize(11).
+					TextColor(t.TextMuted)
+			}
+			ui.Spacer(c)
+			if ui.Button(c, "复制 JSON").Clicked() {
+				c.WriteClipboard(ed.eventEd.Buffer.String())
+				c.Toast("已复制事件 JSON")
+			}
+		})
+		editor.View(c, ed.eventEd).Grow(1).FillWidth()
 	})
 }
 

@@ -44,11 +44,15 @@ type Editor struct {
 	AguiList    ui.ListState
 	RequestList ui.ListState
 	md          markdown.Options
-	agui        httpclient.AguiSnapshot
-	aguiVer     uint64
-	aguiRows    []aguiRow
-	modelVer    uint64
-	modelLines  []string
+
+	SelectedEvent int
+	eventIdx      int
+	eventEd       *editor.State
+	agui          httpclient.AguiSnapshot
+	aguiVer       uint64
+	aguiRows      []aguiRow
+	modelVer      uint64
+	modelLines    []string
 
 	jsonOpen   bool
 	jsonSource string
@@ -81,17 +85,19 @@ type aguiRow struct {
 
 func NewEditor(root *Root, req app.Request) *Editor {
 	ed := &Editor{
-		root:     root,
-		ID:       req.ID,
-		Name:     req.Name,
-		Method:   req.Method,
-		URL:      req.URL,
-		Headers:  req.HeadersText,
-		Params:   req.ParamsText,
-		Body:     req.BodyText,
-		MetaJSON: req.MetaJSON,
-		Auth:     app.ParseAuth(req.MetaJSON),
-		md:       markdown.Options{},
+		root:          root,
+		ID:            req.ID,
+		Name:          req.Name,
+		Method:        req.Method,
+		URL:           req.URL,
+		Headers:       req.HeadersText,
+		Params:        req.ParamsText,
+		Body:          req.BodyText,
+		MetaJSON:      req.MetaJSON,
+		Auth:          app.ParseAuth(req.MetaJSON),
+		md:            markdown.Options{},
+		SelectedEvent: -1,
+		eventIdx:      -1,
 	}
 	ed.paramsKV.Mode = 1
 	ed.headersKV.Mode = 1
@@ -415,6 +421,9 @@ func (ed *Editor) send() {
 	}
 	spec := ed.buildSpec()
 	ed.root.err = ""
+	ed.SelectedEvent = -1
+	ed.eventIdx = -1
+	ed.eventEd = nil
 	sess := ed.root.session(ed.ID)
 	sess.Start(spec)
 	ed.root.status = "请求中: " + ed.Method + " " + app.RedactURL(spec.URL)

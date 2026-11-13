@@ -151,6 +151,10 @@ func TestRootAguiLargeStream(t *testing.T) {
 	sess := root.session(rid)
 	sess.Wait()
 	tt.Frame()
+	if err := tt.Click("Raw"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
 	if err := tt.Click("AGUI"); err != nil {
 		t.Fatal(err)
 	}

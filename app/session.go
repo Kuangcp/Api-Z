@@ -87,9 +87,12 @@ type Session struct {
 	spool     *os.File
 	spoolPath string
 
-	lines     []string
-	carry     []byte
-	truncated bool
+	lines        []string
+	lineEvent    []int
+	pendingLines []int
+	sseEvents    []httpclient.SSEEvent
+	carry        []byte
+	truncated    bool
 
 	sse   httpclient.SSEParser
 	agui  *httpclient.AguiState
@@ -151,6 +154,9 @@ func (s *Session) Start(spec httpclient.Spec) {
 	s.bytes = 0
 	s.events = 0
 	s.lines = nil
+	s.lineEvent = nil
+	s.pendingLines = nil
+	s.sseEvents = nil
 	s.carry = nil
 	s.truncated = false
 	s.sse = httpclient.SSEParser{}
@@ -265,6 +271,26 @@ func (s *Session) Line(i int) string {
 		return strings.ToValidUTF8(string(s.carry), "\uFFFD")
 	}
 	return ""
+}
+
+// LineEvent returns the SSE event index a display line belongs to, or -1.
+func (s *Session) LineEvent(i int) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if i >= 0 && i < len(s.lineEvent) {
+		return s.lineEvent[i]
+	}
+	return -1
+}
+
+// Event returns the parsed SSE event for the event detail panel.
+func (s *Session) Event(i int) (httpclient.SSEEvent, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if i >= 0 && i < len(s.sseEvents) {
+		return s.sseEvents[i], true
+	}
+	return httpclient.SSEEvent{}, false
 }
 
 func (s *Session) CopyText() string {
@@ -420,7 +446,7 @@ func (h *sessionHandler) OnDone(err error) {
 		s.carry = nil
 	}
 	if ev, ok := s.sse.Flush(time.Now()); ok {
-		s.applyEventLocked(ev)
+		s.finishEventLocked(ev)
 	}
 	if err != nil && !s.canceled && !strings.Contains(err.Error(), "context canceled") {
 		s.errMsg = err.Error()
@@ -500,30 +526,64 @@ func (s *Session) handleLineLocked(line string, at time.Time) {
 			s.isSSE = true
 		}
 	}
+	display := line
+	if s.isSSE && strings.HasPrefix(line, "data:") {
+		display = at.Format("15:04:05.000") + " " + line
+	}
+	idx := -1
 	if len(s.lines) < maxDisplayLines {
-		s.lines = append(s.lines, line)
+		idx = len(s.lines)
+		s.lines = append(s.lines, display)
+		s.lineEvent = append(s.lineEvent, -1)
 	} else {
 		s.truncated = true
 	}
 	if !s.isSSE {
 		return
 	}
+	if strings.TrimSpace(line) != "" && idx >= 0 {
+		s.pendingLines = append(s.pendingLines, idx)
+	}
 	if ev, ok := s.sse.Line(line, at); ok {
-		s.applyEventLocked(ev)
+		s.finishEventLocked(ev)
 	}
 }
 
 func (s *Session) partialLineLocked(line string, at time.Time) {
+	display := line
+	if s.isSSE && strings.HasPrefix(line, "data:") {
+		display = at.Format("15:04:05.000") + " " + line
+	}
+	idx := -1
 	if len(s.lines) < maxDisplayLines {
-		s.lines = append(s.lines, line)
+		idx = len(s.lines)
+		s.lines = append(s.lines, display)
+		s.lineEvent = append(s.lineEvent, -1)
 	} else {
 		s.truncated = true
 	}
+	if s.isSSE && strings.TrimSpace(line) != "" && idx >= 0 {
+		s.pendingLines = append(s.pendingLines, idx)
+	}
 	if s.isSSE {
 		if ev, ok := s.sse.Line(line, at); ok {
-			s.applyEventLocked(ev)
+			s.finishEventLocked(ev)
 		}
 	}
+}
+
+// finishEventLocked records a flushed SSE event and ties its display lines
+// to it, so the Raw view can highlight and inspect an event on click.
+func (s *Session) finishEventLocked(ev httpclient.SSEEvent) {
+	event := len(s.sseEvents)
+	s.sseEvents = append(s.sseEvents, ev)
+	for _, idx := range s.pendingLines {
+		if idx >= 0 && idx < len(s.lineEvent) {
+			s.lineEvent[idx] = event
+		}
+	}
+	s.pendingLines = s.pendingLines[:0]
+	s.applyEventLocked(ev)
 }
 
 func (s *Session) applyEventLocked(ev httpclient.SSEEvent) {

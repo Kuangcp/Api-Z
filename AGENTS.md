@@ -99,6 +99,7 @@ api-z 的存在理由就是这条链路。**不要退回全量字符串 + 每帧
 - 请求/响应默认左右 `ui.SplitPercent`（`Root.requestPercent`）；请求区在左、响应区在右。
 - Body 用 mygo `ui/editor`（JSON 高亮、行号、查找），顶部「类型」选择会 upsert/remove Content-Type；JSON 提供格式化按钮。Headers/Params 用 `ui/kv_editor.go` 的文本/表格双模式：表格行带启用开关、增删与 `! ` 禁用语义，文本仍是唯一持久化格式。
 - 响应区三段：Raw / Model / AGUI；非 SSE 且 JSON 时提供 JSON 美化（只读 editor）。
+- SSE 的 Raw 显示在 `data:` 行前加 `HH:mm:ss.SSS`；`Session` 维护 `lineEvent`/`sseEvents` 映射，点击事件行选中整组行，JSON 事件在底部用只读高亮编辑器展示。
 - 响应区固定 Body / Headers / Request 三页签；Request 读取 `Session.Spec()` 并用 `app.FormatHTTP` 展示实际发送内容，HAR 历史读取 request 快照，不要重新拼编辑器原文。
 - 二进制响应用 `Snap.FileName`（Content-Disposition/URL/Content-Type 推导），保存/打开走 `ui/binary.go`，复制文件用 `app.CopyFile`。
 - 原始行用等宽字体、`SingleLine`、`clipLine`；AGUI 文本用分块 markdown。

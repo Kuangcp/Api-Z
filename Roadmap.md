@@ -210,7 +210,8 @@ api-z 使用自己的数据目录与 SQLite（WAL）：
 第二批（响应检索）：
 - JSON 折叠树：层级路径折叠、默认展开策略、内联摘要、全部展开/收起、5 万行上限。
 - 响应搜索：`Ctrl+F`、计数、循环跳转、高亮、JSON 命中自动展开、搜索时暂停自动滚底。
-- SSE data 行本地时间戳、事件详情面板、复制事件 payload。
+- [x] SSE data 行本地时间戳、事件行高亮、JSON 事件底部详情面板与复制。
+- 响应搜索与 JSON 折叠树仍在第二批。
 
 第三批（请求语义与网络）：
 - Body `表单` 按 `key: value` URL 编码为 wire body。
@@ -289,6 +290,7 @@ go run . -migrate -api-x-home ~/.local/share/api-x -data-dir /tmp/api-z-smoke
 - [ ] P5 MCP（SSE / streamable HTTP / stdio）
 - [x] P6 第一批：响应三页签/请求快照/二进制保存打开/自动保存
 - [x] P6 第三批（部分）：集合/文件夹 Auth 与 OpenAPI 绑定设置
+- [x] P6 第二批（部分）：SSE Raw 时间戳与事件 JSON 详情
 
 ### 已实测
 

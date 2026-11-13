@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -80,6 +81,16 @@ func TestSessionStreamsSSE(t *testing.T) {
 	}
 	if _, err := os.Stat(snap.SpoolPath); err != nil {
 		t.Fatalf("spool: %v", err)
+	}
+	stamp := regexp.MustCompile(`^\d{2}:\d{2}:\d{2}\.\d{3} data:`)
+	if first := s.Line(0); !stamp.MatchString(first) {
+		t.Fatalf("SSE data line timestamp = %q", first)
+	}
+	if idx := s.LineEvent(0); idx != 0 {
+		t.Fatalf("data line event = %d, want 0", idx)
+	}
+	if ev, ok := s.Event(0); !ok || !strings.Contains(ev.Data, "RUN_STARTED") {
+		t.Fatalf("event 0 = %#v, %v", ev, ok)
 	}
 	if _, err := os.Stat(filepath.Join(paths.ResponseDir("req-sse"))); err != nil {
 		t.Fatal(err)
