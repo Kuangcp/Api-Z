@@ -243,7 +243,29 @@ func (ed *Editor) requestHeader(c *ui.Context) {
 	running := sess.Running()
 	methods := []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
 	ui.Row(c).Padding(6, 8).Gap(6).AlignItems(ui.Center).Children(func() {
-		if ui.Select(c, &ed.Method, methods).Label("方法").Width(96).Changed() {
+		methodSel := ui.SelectBase(c, &ed.Method)
+		methodSel.Trigger.Label("方法").Width(82).Padding(2, 6).Radius(4).Justify(ui.Start)
+		if methodSel.Trigger.Hovered() {
+			methodSel.Trigger.Background(t.SurfaceHover)
+		}
+		methodSel.Trigger.Children(func() {
+			ui.Text(c, ed.Method).FontSize(12).Bold().TextColor(methodColor(c, ed.Method))
+			ui.Spacer(c)
+			ui.Text(c, "▾").FontSize(9).TextColor(t.TextMuted)
+		})
+		methodSel.Popup(func(panel ui.Element) {
+			panel.Padding(4).Background(t.Surface).Border(1, t.Border).Radius(6)
+			for _, m := range methods {
+				item := methodSel.Item(m).Padding(3, 8).Radius(4)
+				if item.Highlighted() {
+					item.Background(t.Accent.Alpha(0.14))
+				}
+				item.Children(func() {
+					ui.Text(c, m).FontSize(12).TextColor(methodColor(c, m))
+				})
+			}
+		})
+		if methodSel.Trigger.Changed() {
 			ed.Dirty = true
 		}
 		url := ui.TextInput(c, &ed.URL).Placeholder("https://{{host}}/api").Grow(1)
@@ -409,14 +431,35 @@ func (ed *Editor) bodyToolbar(c *ui.Context) {
 	ui.Row(c).Gap(8).AlignItems(ui.Center).Padding(4, 6).BorderWidth(0, 0, 1, 0).
 		BorderColor(t.Border).Children(func() {
 		ui.Text(c, "类型").FontSize(11).TextColor(t.TextMuted)
-		if ui.Select(c, &cur, options).Label("Body 类型").Width(110).Changed() {
+		kindSel := ui.SelectBase(c, &cur)
+		kindSel.Trigger.Label("Body 类型").Padding(2, 6).Radius(4)
+		if kindSel.Trigger.Hovered() {
+			kindSel.Trigger.Background(t.SurfaceHover)
+		}
+		kindSel.Trigger.Children(func() {
+			ui.Text(c, cur).FontSize(12).TextColor(t.Text)
+			ui.Box(c).Width(4)
+			ui.Text(c, "▾").FontSize(9).TextColor(t.TextMuted)
+		})
+		kindSel.Popup(func(panel ui.Element) {
+			panel.Padding(4).Background(t.Surface).Border(1, t.Border).Radius(6)
+			for _, option := range options {
+				item := kindSel.Item(option).Padding(3, 8).Radius(4)
+				if item.Highlighted() {
+					item.Background(t.Accent.Alpha(0.14))
+				}
+				item.Children(func() { ui.Text(c, option).FontSize(12) })
+			}
+		})
+		if kindSel.Trigger.Changed() {
 			ed.Headers = setBodyContentType(ed.Headers, cur)
 			ed.headersKV.Source = ""
 			ed.Dirty = true
 		}
 		ui.Spacer(c)
 		if kind == 1 {
-			if ui.Button(c, "格式化 JSON").Disabled(strings.TrimSpace(ed.bodyState().Buffer.String()) == "").Clicked() {
+			if iconButtonPlain(c, iconFormat, "格式化 JSON").
+				Disabled(strings.TrimSpace(ed.bodyState().Buffer.String()) == "").Clicked() {
 				if formatted, ok := prettyJSON(ed.bodyState().Buffer.String()); ok {
 					ed.Body = formatted
 					ed.resetBodyEditor()
