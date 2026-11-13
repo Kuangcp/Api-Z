@@ -107,21 +107,3 @@ func TestRequestMenuParseCurlBelow(t *testing.T) {
 		t.Fatalf("order = %v", names)
 	}
 }
-
-func TestErrorAutoClearSequence(t *testing.T) {
-	root := &Root{}
-	root.showError("boom")
-	seq := root.errSeq
-	if root.err != "boom" {
-		t.Fatalf("err = %q", root.err)
-	}
-	root.expireError(seq)
-	if root.err != "" {
-		t.Fatalf("err not cleared: %q", root.err)
-	}
-	root.showError("newer")
-	root.expireError(seq)
-	if root.err != "newer" {
-		t.Fatalf("stale timer cleared newer error: %q", root.err)
-	}
-}

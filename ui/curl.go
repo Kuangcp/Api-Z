@@ -23,24 +23,20 @@ func (r *Root) importCurlFromClipboard(c *ui.Context) {
 	text := strings.TrimSpace(c.ReadClipboard())
 	if text == "" {
 		c.Toast("剪贴板为空")
-		r.showError("导入 cURL 失败: 剪贴板为空")
 		return
 	}
 	collectionID, folderID, afterID, label, ok := r.selectedCurlTarget()
 	if !ok {
 		c.Toast("请先创建集合")
-		r.showError("导入 cURL 失败: 请先创建集合")
 		return
 	}
 	id, err := r.createCurlRequestAt(collectionID, folderID, afterID, text)
 	if err != nil {
 		c.Toast("导入 cURL 失败: " + err.Error())
-		r.showError("导入 cURL 失败: " + err.Error())
 		return
 	}
 	r.openRequest(id)
 	r.status = "已从剪贴板创建请求 → " + label
-	r.errSeq++
 	r.err = ""
 	c.Toast("已从剪贴板创建请求")
 }
@@ -80,24 +76,20 @@ func (r *Root) importCurlAt(c *ui.Context, kind, id string) {
 	text := strings.TrimSpace(c.ReadClipboard())
 	if text == "" {
 		c.Toast("剪贴板为空")
-		r.showError("解析 cURL 失败: 剪贴板为空")
 		return
 	}
 	collectionID, folderID, afterID, label, ok := r.curlTargetForNode(kind, id)
 	if !ok {
 		c.Toast("目标目录不存在")
-		r.showError("解析 cURL 失败: 目标目录不存在")
 		return
 	}
 	requestID, err := r.createCurlRequestAt(collectionID, folderID, afterID, text)
 	if err != nil {
 		c.Toast("解析 cURL 失败: " + err.Error())
-		r.showError("解析 cURL 失败: " + err.Error())
 		return
 	}
 	r.openRequest(requestID)
 	r.status = "已从剪贴板创建请求 → " + label
-	r.errSeq++
 	r.err = ""
 	c.Toast("已从剪贴板创建请求")
 }
