@@ -123,7 +123,7 @@ func (ed *Editor) responseToolbar(c *ui.Context, sess *app.Session, snap app.Ses
 			ui.Text(c, "已截断显示").FontSize(11).TextColor(t.Warning)
 		}
 		ui.Box(c).Grow(1)
-		ui.MenuButton(c, "历史", func(m *ui.Menu) {
+		iconMenuButton(c, iconHistory, "历史", func(m *ui.Menu) {
 			list, err := ed.root.store.ListExchanges(ed.ID, 10)
 			if err != nil || len(list) == 0 {
 				m.Item("暂无历史").Disabled(true)
@@ -136,7 +136,7 @@ func (ed *Editor) responseToolbar(c *ui.Context, sess *app.Session, snap app.Ses
 				}
 			}
 		}).Label("历史")
-		if ui.Button(c, "复制").Clicked() {
+		if iconButton(c, iconCopy, "复制").Clicked() {
 			c.WriteClipboard(sess.CopyText())
 			c.Toast("已复制响应正文")
 		}
@@ -158,7 +158,7 @@ func (ed *Editor) responseTabs(c *ui.Context, sess *app.Session, snap app.Sessio
 		ui.Spacer(c)
 		if ed.RespTab == 0 {
 			canJSON := snap.Done && !snap.IsSSE && app.IsJSONContentType(snap.ContentType)
-			if ui.Button(c, "JSON").Disabled(!canJSON).Clicked() {
+			if iconButton(c, iconFormat, "JSON").Disabled(!canJSON).Clicked() {
 				ed.toggleJSON(sess, snap)
 			}
 			if app.IsSSEContentType(snap.ContentType) {
@@ -218,7 +218,7 @@ func (ed *Editor) historyPane(c *ui.Context) {
 				ui.Text(c, fmt.Sprintf("TPOT %dms", resp.TPOTMS)).FontSize(11).TextColor(t.TextMuted)
 			}
 			ui.Box(c).Grow(1)
-			if ui.Button(c, "复制").Clicked() {
+			if iconButton(c, iconCopy, "复制").Clicked() {
 				c.WriteClipboard(resp.Body)
 				c.Toast("已复制历史正文")
 			}
@@ -230,7 +230,7 @@ func (ed *Editor) historyPane(c *ui.Context) {
 		ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
 			ui.Tabs(c, &ed.RespTab, "Body", "Headers", "Request")
 			ui.Spacer(c)
-			if ed.RespTab == 0 && ui.Button(c, "JSON").Clicked() {
+			if ed.RespTab == 0 && iconButton(c, iconFormat, "JSON").Clicked() {
 				if ed.histJSONEd == nil {
 					raw := resp.Body
 					var buf bytes.Buffer
