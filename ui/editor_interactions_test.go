@@ -169,3 +169,31 @@ func TestKVParseCommit(t *testing.T) {
 		t.Fatalf("commit = %q", out)
 	}
 }
+
+func TestNoBodyKeepsContentButDisablesAndSkipsSend(t *testing.T) {
+	_, ed, tt := openEditorTest(t, "Content-Type: application/json", `{"a":1}`)
+	if err := tt.Click("Body"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if ed.bodyState().ReadOnly {
+		t.Fatal("JSON body should be editable")
+	}
+	if err := tt.Click("JSON"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if err := tt.Click("无 Body"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if !ed.bodyState().ReadOnly {
+		t.Fatal("no-body editor is still editable")
+	}
+	if ed.Body != `{"a":1}` || ed.bodyState().Buffer.String() != `{"a":1}` {
+		t.Fatalf("body content changed: %q / %q", ed.Body, ed.bodyState().Buffer.String())
+	}
+	if spec := ed.buildSpec(); len(spec.Body) != 0 {
+		t.Fatalf("no-body request sends %q", spec.Body)
+	}
+}

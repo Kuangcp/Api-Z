@@ -223,7 +223,10 @@ func (ed *Editor) requestPane(c *ui.Context) {
 			ed.bodyToolbar(c)
 			st := ed.bodyState()
 			st.Font = ed.root.bodyEditorFont()
-			editor.View(c, st).Grow(1).FillWidth()
+			noBody := inferBodyKind(ed.Headers) == bodyNone
+			st.ReadOnly = noBody
+			view := editor.View(c, st).Grow(1).FillWidth()
+			view.Disabled(noBody)
 			if st.Buffer.Version() != ed.bodyVer {
 				ed.Dirty = true
 				ed.bodyVer = st.Buffer.Version()
@@ -402,7 +405,11 @@ func (ed *Editor) buildSpec() httpclient.Spec {
 	if strings.EqualFold(auth.Type, "inherit") || auth.Type == "" {
 		auth = ed.root.tree.EffectiveAuth(ed.ID)
 	}
-	return app.BuildSpec(ed.Method, ed.URL, ed.Headers, ed.Params, ed.Body, auth, ed.root.env.Map())
+	body := ed.Body
+	if inferBodyKind(ed.Headers) == bodyNone {
+		body = ""
+	}
+	return app.BuildSpec(ed.Method, ed.URL, ed.Headers, ed.Params, body, auth, ed.root.env.Map())
 }
 
 func (ed *Editor) send() {

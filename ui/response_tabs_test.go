@@ -25,7 +25,7 @@ func TestResponseTabsAndBinaryCard(t *testing.T) {
 	cid, _ := store.CreateCollection("Demo")
 	rid, _ := store.CreateRequest(cid, "", "Echo")
 	_ = store.SaveRequest(app.Request{ID: rid, Name: "Echo", Method: "POST", URL: srv.URL + "/echo",
-		HeadersText: "X-Input: 1", BodyText: `{"a":1}`})
+		HeadersText: "X-Input: 1\nContent-Type: application/json", BodyText: `{"a":1}`})
 	tree, _ := store.LoadTree()
 	root := NewRoot(paths, store, tree, app.EnvState{Version: 1})
 	root.openRequest(rid)
