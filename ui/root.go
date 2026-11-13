@@ -321,18 +321,24 @@ func (r *Root) treeRow(c *ui.Context, row treeRow) {
 	btn.Children(func() {
 		switch row.kind {
 		case rowCollection:
+			chevron := iconChevronRight
+			folder := iconFolder
 			if row.open {
-				ui.Text(c, "▾").FontSize(10).TextColor(t.TextMuted)
-			} else {
-				ui.Text(c, "▸").FontSize(10).TextColor(t.TextMuted)
+				chevron = iconChevronDown
+				folder = iconFolderOpen
 			}
+			ui.Icon(c, chevron).FontSize(13).TextColor(t.TextMuted)
+			ui.Icon(c, folder).FontSize(14).TextColor(t.TextMuted)
 			ui.Text(c, row.name).FontSize(12.5).Bold().SingleLine().Grow(1)
 		case rowFolder:
+			chevron := iconChevronRight
+			folder := iconFolder
 			if row.open {
-				ui.Text(c, "▾").FontSize(10).TextColor(t.TextMuted)
-			} else {
-				ui.Text(c, "▸").FontSize(10).TextColor(t.TextMuted)
+				chevron = iconChevronDown
+				folder = iconFolderOpen
 			}
+			ui.Icon(c, chevron).FontSize(13).TextColor(t.TextMuted)
+			ui.Icon(c, folder).FontSize(14).TextColor(t.TextMuted)
 			ui.Text(c, row.name).FontSize(12.5).SingleLine().Grow(1)
 		case rowRequest:
 			if r.requestRunning(row.id) {
