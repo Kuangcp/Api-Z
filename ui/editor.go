@@ -217,13 +217,9 @@ func (ed *Editor) requestPane(c *ui.Context) {
 	defer ed.scheduleAutoSave()
 	ui.Column(c).Fill().Children(func() {
 		ed.requestHeader(c)
-		ui.Tabs(c, &ed.ReqTab, "Params", "Headers", "Body", "Auth")
+		ui.Tabs(c, &ed.ReqTab, "Body", "Params", "Headers", "Auth")
 		switch ed.ReqTab {
 		case 0:
-			ed.root.kvEditor(c, ed, "params", "每行 key: value；`! ` 前缀禁用；与 URL 中已有 query 用 & 合并。", &ed.Params, &ed.paramsKV)
-		case 1:
-			ed.root.kvEditor(c, ed, "headers", "每行 Name: Value；`! ` 前缀只编辑不发送。", &ed.Headers, &ed.headersKV)
-		case 2:
 			ed.bodyToolbar(c)
 			st := ed.bodyState()
 			editor.View(c, st).Grow(1).FillWidth()
@@ -231,6 +227,10 @@ func (ed *Editor) requestPane(c *ui.Context) {
 				ed.Dirty = true
 				ed.bodyVer = st.Buffer.Version()
 			}
+		case 1:
+			ed.root.kvEditor(c, ed, "params", "每行 key: value；`! ` 前缀禁用；与 URL 中已有 query 用 & 合并。", &ed.Params, &ed.paramsKV)
+		case 2:
+			ed.root.kvEditor(c, ed, "headers", "每行 Name: Value；`! ` 前缀只编辑不发送。", &ed.Headers, &ed.headersKV)
 		case 3:
 			ed.authPane(c)
 		}
