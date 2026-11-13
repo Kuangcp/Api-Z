@@ -67,6 +67,9 @@ func (r *Root) treeContextMenu(c *ui.Context, m *ui.Menu, row treeRow) {
 		if m.Item("复制为 Raw HTTP").Chosen() {
 			r.copyRequestRawHTTP(c, id)
 		}
+		if m.Item("解析 cURL").Chosen() {
+			r.importCurlAt(c, app.NodeRequest, id)
+		}
 		if m.Item("移动到文件夹…").Chosen() {
 			r.beginMove(app.NodeRequest, id, req.Name)
 		}

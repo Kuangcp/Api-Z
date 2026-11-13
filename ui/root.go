@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
@@ -68,6 +69,7 @@ type Root struct {
 	requestPercent float32
 	status         string
 	err            string
+	errSeq         uint64
 
 	dialog     dialogKind
 	dialogOpen bool
@@ -168,6 +170,27 @@ func NewRoot(paths app.Paths, store *app.Store, tree app.Tree, env app.EnvState)
 	r.restoreLastRequest()
 	r.status = fmt.Sprintf("%d 个集合 · %d 个请求", len(tree.Collections), len(tree.Requests))
 	return r
+}
+
+// showError puts msg in the bottom bar and clears it after three seconds,
+// unless a newer error replaced it.
+func (r *Root) showError(msg string) {
+	r.err = msg
+	r.errSeq++
+	seq := r.errSeq
+	win := r.win
+	if win == nil {
+		return
+	}
+	time.AfterFunc(3*time.Second, func() {
+		win.Update(func() { r.expireError(seq) })
+	})
+}
+
+func (r *Root) expireError(seq uint64) {
+	if r.errSeq == seq {
+		r.err = ""
+	}
 }
 
 func (r *Root) Attach(win *mygo.Window) {
