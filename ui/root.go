@@ -112,6 +112,7 @@ type Root struct {
 	themePath     string
 	themeKey      string
 	sessionPath   string
+	recentPath    string
 	accentHex     string
 	fontInput     string
 	treeFontInput string
@@ -150,6 +151,7 @@ func NewRoot(paths app.Paths, store *app.Store, tree app.Tree, env app.EnvState)
 		themePath:      app.ThemePath(paths.ConfigDir),
 		keymapPath:     app.KeymapPath(paths.ConfigDir),
 		sessionPath:    app.SessionPath(paths.ConfigDir),
+		recentPath:     app.RecentPath(paths.ConfigDir),
 	}
 	for _, c := range tree.Collections {
 		r.expanded["c:"+c.ID] = true
@@ -164,6 +166,7 @@ func NewRoot(paths app.Paths, store *app.Store, tree app.Tree, env app.EnvState)
 	r.treeFontInput = r.themePrefs.TreeFont
 	r.bodyFontInput = r.themePrefs.BodyFont
 	r.keymap = mergedKeymap(app.LoadKeymap(r.keymapPath))
+	r.loadRecentRequests()
 	r.ensureActiveCollection()
 	r.restoreLastRequest()
 	r.status = fmt.Sprintf("%d 个集合 · %d 个请求", len(tree.Collections), len(tree.Requests))

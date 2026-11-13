@@ -426,6 +426,7 @@ func (ed *Editor) send() {
 	ed.eventIdx = -1
 	ed.eventEd = nil
 	ed.jsonAutoSource = ""
+	ed.root.touchMRU(ed.ID)
 	sess := ed.root.session(ed.ID)
 	sess.Start(spec)
 	ed.root.status = "请求中: " + ed.Method + " " + app.RedactURL(spec.URL)

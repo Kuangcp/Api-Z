@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -59,5 +60,21 @@ func TestKeymapPrefsRoundTrip(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Dir(path)); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestRecentRequestsRoundTrip(t *testing.T) {
+	path := RecentPath(t.TempDir())
+	var ids []string
+	for i := 0; i < 60; i++ {
+		ids = append(ids, fmt.Sprintf("r%02d", i))
+	}
+	ids = append(ids, "r00", "")
+	if err := SaveRecentRequests(path, ids); err != nil {
+		t.Fatal(err)
+	}
+	got := LoadRecentRequests(path)
+	if len(got) != MaxRecentRequests || got[0] != "r00" || got[len(got)-1] != "r49" {
+		t.Fatalf("recent = %#v", got)
 	}
 }

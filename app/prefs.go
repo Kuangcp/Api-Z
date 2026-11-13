@@ -170,3 +170,42 @@ func writeJSON(path string, v any) error {
 	}
 	return os.Rename(tmp, path)
 }
+
+// RecentRequests is the MRU queue shown by Ctrl+K before a query is typed.
+type RecentRequests struct {
+	Requests []string `json:"requests"`
+}
+
+const MaxRecentRequests = 50
+
+func RecentPath(configDir string) string { return filepath.Join(configDir, "recent.json") }
+
+func LoadRecentRequests(path string) []string {
+	var p RecentRequests
+	b, err := os.ReadFile(path)
+	if err != nil || json.Unmarshal(b, &p) != nil {
+		return nil
+	}
+	return normalizeRecent(p.Requests)
+}
+
+func SaveRecentRequests(path string, ids []string) error {
+	return writeJSON(path, RecentRequests{Requests: normalizeRecent(ids)})
+}
+
+func normalizeRecent(ids []string) []string {
+	seen := make(map[string]bool, len(ids))
+	out := make([]string, 0, min(len(ids), MaxRecentRequests))
+	for _, id := range ids {
+		id = strings.TrimSpace(id)
+		if id == "" || seen[id] {
+			continue
+		}
+		seen[id] = true
+		out = append(out, id)
+		if len(out) == MaxRecentRequests {
+			break
+		}
+	}
+	return out
+}

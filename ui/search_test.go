@@ -75,3 +75,33 @@ func TestRecentSwitchAndGlobalSearch(t *testing.T) {
 		t.Fatalf("tree not revealed: selected=%q expanded=%v", root.selected, root.expanded)
 	}
 }
+
+func TestGlobalSearchDefaultsToRecent(t *testing.T) {
+	store, paths := collectionTestStore(t)
+	a, _ := store.CreateCollection("Alpha")
+	ra, _ := store.CreateRequest(a, "", "AlphaReq")
+	_ = store.SaveRequest(app.Request{ID: ra, Name: "AlphaReq", Method: "GET", URL: "https://example.com/a"})
+	b, _ := store.CreateCollection("Beta")
+	rb, _ := store.CreateRequest(b, "", "BetaReq")
+	_ = store.SaveRequest(app.Request{ID: rb, Name: "BetaReq", Method: "POST", URL: "https://example.com/b"})
+	tree, _ := store.LoadTree()
+	root := NewRoot(paths, store, tree, app.EnvState{Version: 1})
+	root.openRequest(ra)
+	root.openRequest(rb)
+	if root.mru[0] != rb {
+		t.Fatalf("mru = %v", root.mru)
+	}
+	tt := ui.NewTester(root.View, 1200, 800)
+	tt.Frame()
+	tt.Key(ui.Ctrl, ui.KeyK)
+	tt.Frame()
+	if !tt.HasText("最近请求") || !tt.HasText("BetaReq") || !tt.HasText("AlphaReq") {
+		t.Fatalf("recent search = %v", tt.Texts())
+	}
+
+	tree, _ = store.LoadTree()
+	again := NewRoot(paths, store, tree, app.EnvState{Version: 1})
+	if again.mru[0] != rb {
+		t.Fatalf("persisted mru = %v", again.mru)
+	}
+}

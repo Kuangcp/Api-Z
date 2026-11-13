@@ -118,19 +118,19 @@ api-z 的存在理由就是这条链路。**不要退回全量字符串 + 每帧
 - 树/列表选中、hover、空态要有明确视觉；破坏性操作必须二次确认（`ui/tree_actions.go` 的删除弹窗）。
 - 窗口为无边框自绘标题栏（`Root.titleBar`，38 DIP）：左侧应用图标 + Api-Z，右侧环境级联菜单/数据目录/设置与窗口按钮；整条 `DragWindow`。窗口底色用 `WindowBackgroundColor(themePrefs)`，圆角用 `WindowCornerRadius`。
 - 环境切换走 `ui/env_menu.go`：按钮显示 `标签 | 环境名`，弹出两级菜单（左标签、右环境），不要退回平铺 `ui.Select`；无环境和“管理环境…”放在左列底部；不再在标题栏重复放环境管理图标。
-- 主窗口用 `StateKey: "main"` + `windowStateStore` 恢复位置/大小/最大化；`session.json` 只存 `lastRequest`，打开/切换/关闭 Tab 后调用 `rememberActiveRequest`，缺失时保持空白态。
+- 主窗口用 `StateKey: "main"` + `windowStateStore` 恢复位置/大小/最大化；`session.json` 只存 `lastRequest`，`recent.json` 存最近 Request 的 MRU（最多 50）；打开/切换/关闭 Tab 后调用 `rememberActiveRequest`，缺失时保持空白态。
 - 启动恢复 Request 时必须调用 `revealRequestInTree`：展开所有祖先文件夹并设置 `Root.reveal`，由 sidebar 在 List 构建后 `ScrollTo` 定位；不要在 openRequest 时无条件滚动。
 - 树 CRUD 走 `app/store_crud.go`；UI 动作/弹窗在 `ui/tree_actions.go`，不要直接拼 SQL。
 - 集合/文件夹设置走 `ui/node_settings.go` + `Store.UpdateNodeMeta`：Auth 用 `app.MergeAuth`，OpenAPI 绑定用 `app.SetCollectionOpenAPI`（保留 auth/color 等其它 meta）；设置弹窗不要直接改数据库。
 - 左侧集合 Tab 由 `ui/collection_tabs.go` 管理：`Root.activeCollection` / `colMRU`，树只渲染当前集合；Tab 放不下时保留最近使用项，其余进「更多集合」下拉。新增集合/导入/OpenAPI 刷新/打开其他集合的请求后必须调用 `activateCollection`。
 - 切换编辑器 Tab（点击/Ctrl+Tab/关闭后激活相邻 Tab）必须调用 `Root.focusRequest`：切集合、选中 Request、展开并滚动树。
-- 多标签最近切换用 `Root.mru`（`Ctrl+Tab` 在最近两个之间切换）；全局搜索用 `Ctrl+K`，从搜索结果打开请求后必须调用 `revealRequestInTree`，展开祖先目录并在左侧树定位。
+- 多标签最近切换用 `Root.mru`（`Ctrl+Tab` 在最近两个之间切换）；全局搜索用 `Ctrl+K`；空查询显示 `Root.mru` 中的最近请求，队列上限 50、持久化到 `<config>/recent.json`，打开/发送请求都会 `touchMRU`；从搜索结果打开请求后必须调用 `revealRequestInTree`。
 - URL 输入用 `ui/url_input.go` 在 `{{var}}` 下绘制主题强调色底纹并用强调色重绘变量文字；仅在文本未超出输入框时绘制，光标位于变量内时跳过该变量，避免横向滚动/光标遮挡。
 - 主题：MyGo 每帧都会把 Context 主题重置为桌面默认，`applyTheme` 必须每帧 `SetTheme`，不能用 themeKey 跳过；themeKey 只用于 SetZoom 与原生窗口底色。
 - 变量补全：URL/Headers/Params 用 `ui.Popover` + `Element.TextSelection/SetTextSelection`；Body 用 `editor.OnCompletion`。插入格式统一 `{{key}}`，不要在每个输入框里各写一套。
 - 字体：`theme.json` 的 `treeFont/treeFontSize` 只作用于左侧请求树；`bodyFont/bodyFontSize` 作用于请求 Body 编辑器、响应 Raw/Model、JSON/事件编辑器；空字体/0 字号走默认。
 - 主题/字体/缩放/快捷键：持久化到 `<config>/theme.json` / `keymap.json`；`theme.json` 含 `mode`/`accent`/`font`/`scale`（百分比），字体用 draft 字段避免逐键 trim，缩放走 `Context.SetZoom`；动作表在 `ui/keymap.go`，不要在 View 里散写 `c.Shortcut`。录制用 `detectChord`（`Context.KeyDown` + `Modifiers`），冲突时删除旧绑定。
-- 主题只在 `themeKey` 变化时 `SetTheme`；系统模式保留启动时捕获的 `baseTheme`。强调色必须是 `#rrggbb`。
+- 不要用缓存跳过 `SetTheme`：MyGo 每帧重置主题，`applyTheme` 每帧重设；`themeKey` 只控制 SetZoom 和窗口底色。强调色必须是 `#rrggbb`。
 - 环境管理器编辑的是 `Root.envDraft` 深拷贝，按「保存环境」才 `Clean()` 落盘；不要在视图里直接改 `Root.env`。
 - 树节点移动走 `Store.MoveNodeTo`（请求/文件夹，跨集合/层级）；拖拽插入走 `Store.MoveNodeBefore`。文件夹移动必须同步子树的 `collection_id`，并阻止移入自身/子树。UI 在 `ui/move.go` / `ui/tree_drag.go`。
 - 拖拽目标规则：文件夹/请求可拖入集合根或文件夹；文件夹之间可上下排序，请求之间可上下排序；文件夹不能与请求混排（树显示文件夹在前）。
