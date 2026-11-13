@@ -37,17 +37,16 @@ func resolveTheme(base *ui.Theme, p app.ThemePrefs) *ui.Theme {
 }
 
 func (r *Root) applyTheme(c *ui.Context) {
-	if r.baseTheme == nil {
-		cp := *c.Theme()
-		r.baseTheme = &cp
-	}
+	// MyGo resets the context theme to the desktop's at the start of every
+	// frame, so the app theme must be set each frame; only zoom and the
+	// native window background need to change with the preference key.
+	c.SetTheme(resolveTheme(c.Theme(), r.themePrefs))
 	key := fmt.Sprintf("%d|%s|%s|%d|%s|%d", r.themePrefs.Mode, r.themePrefs.Accent,
 		r.themePrefs.Font, r.themePrefs.Scale, r.themePrefs.Scheme, r.themePrefs.Radius)
 	if key == r.themeKey {
 		return
 	}
 	r.themeKey = key
-	c.SetTheme(resolveTheme(r.baseTheme, r.themePrefs))
 	c.SetZoom(themeScaleFactor(r.themePrefs.Scale))
 	if r.win != nil {
 		_ = r.win.SetBackgroundColor(WindowBackgroundColor(r.themePrefs))

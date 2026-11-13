@@ -233,3 +233,35 @@ func TestTreeAndBodyFontPreferences(t *testing.T) {
 		t.Fatalf("body font = %#v", ed.bodyEd)
 	}
 }
+
+func TestThemeAppliesEveryFrame(t *testing.T) {
+	store, paths := collectionTestStore(t)
+	tree, _ := store.LoadTree()
+	root := NewRoot(paths, store, tree, app.EnvState{Version: 1})
+	dark := true
+	view := func(c *ui.Context) {
+		root.View(c)
+		dark = c.Theme().Dark
+	}
+	tt := ui.NewTester(view, 1000, 700)
+	tt.Frame()
+	root.settingsOpen = true
+	root.settingsTab = 0
+	tt.Frame()
+	if err := tt.Click("浅色"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Frame()
+	if dark {
+		t.Fatal("light theme did not persist across frames")
+	}
+	if err := tt.Click("深色"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Frame()
+	if !dark {
+		t.Fatal("dark theme did not persist across frames")
+	}
+}

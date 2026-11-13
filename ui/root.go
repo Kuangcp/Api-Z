@@ -112,7 +112,6 @@ type Root struct {
 	themePath     string
 	themeKey      string
 	sessionPath   string
-	baseTheme     *ui.Theme
 	accentHex     string
 	fontInput     string
 	treeFontInput string
@@ -658,6 +657,7 @@ func (r *Root) tabBar(c *ui.Context) {
 			}
 			btn.Children(func() {
 				ui.Text(c, ed.Method).FontSize(10).Bold().TextColor(methodColor(c, ed.Method))
+				ui.Box(c).Width(5)
 				ui.Text(c, ed.Name).FontSize(12).SingleLine().MaxWidth(180)
 			})
 			if btn.Clicked() {
