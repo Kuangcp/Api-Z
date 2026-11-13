@@ -6,6 +6,9 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
+
+	"api-z/httpclient"
 )
 
 type Header struct {
@@ -206,4 +209,28 @@ func FormatBytes(n int64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %cB", float64(n)/float64(div), "KMGTPE"[exp])
+}
+
+// BuildSpec resolves a request the same way the editor sends it: apply
+// environment variables, merge Params and auth query, add auth headers and
+// turn the body into bytes.
+func BuildSpec(method, rawURL, headersText, paramsText, bodyText string, auth Auth, vars map[string]string) httpclient.Spec {
+	params := ParseParams(ApplyVariables(paramsText, vars))
+	params = append(params, ResolveAuthQuery(auth, vars)...)
+	url := ApplyVariables(rawURL, vars)
+	url = EnsureDefaultScheme(MergeURLWithParams(url, params))
+
+	headers := HeadersForSend(ParseHeaders(ApplyVariables(headersText, vars)))
+	headers = append(headers, ResolveAuth(auth, vars)...)
+	hdr := make([]httpclient.Header, 0, len(headers))
+	for _, h := range headers {
+		hdr = append(hdr, httpclient.Header{Name: h.Name, Value: h.Value})
+	}
+	return httpclient.Spec{
+		Method:         method,
+		URL:            url,
+		Headers:        hdr,
+		Body:           []byte(ApplyVariables(bodyText, vars)),
+		RequestTimeout: 120 * time.Second,
+	}
 }

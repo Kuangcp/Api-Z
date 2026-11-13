@@ -384,31 +384,11 @@ func setAuthValue(list *[]app.AuthProperty, key, value string) {
 
 func (ed *Editor) buildSpec() httpclient.Spec {
 	ed.syncBody()
-	vars := ed.root.env.Map()
 	auth := ed.Auth
 	if strings.EqualFold(auth.Type, "inherit") || auth.Type == "" {
 		auth = ed.root.tree.EffectiveAuth(ed.ID)
 	}
-	params := app.ParseParams(app.ApplyVariables(ed.Params, vars))
-	params = append(params, app.ResolveAuthQuery(auth, vars)...)
-	url := app.ApplyVariables(ed.URL, vars)
-	url = app.EnsureDefaultScheme(app.MergeURLWithParams(url, params))
-
-	headers := app.HeadersForSend(app.ParseHeaders(app.ApplyVariables(ed.Headers, vars)))
-	headers = append(headers, app.ResolveAuth(auth, vars)...)
-	body := []byte(app.ApplyVariables(ed.Body, vars))
-
-	hdr := make([]httpclient.Header, 0, len(headers))
-	for _, h := range headers {
-		hdr = append(hdr, httpclient.Header{Name: h.Name, Value: h.Value})
-	}
-	return httpclient.Spec{
-		Method:         ed.Method,
-		URL:            url,
-		Headers:        hdr,
-		Body:           body,
-		RequestTimeout: 120 * time.Second,
-	}
+	return app.BuildSpec(ed.Method, ed.URL, ed.Headers, ed.Params, ed.Body, auth, ed.root.env.Map())
 }
 
 func (ed *Editor) send() {

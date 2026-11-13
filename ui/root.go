@@ -364,6 +364,9 @@ func (r *Root) treeRow(c *ui.Context, row treeRow) {
 			r.openRequest(row.id)
 		}
 	}
+	if row.kind == rowRequest && btn.DoubleClicked() {
+		r.beginRename(app.NodeRequest, row.id, row.name)
+	}
 	btn.ContextMenu(func(m *ui.Menu) {
 		r.treeContextMenu(c, m, row)
 	})

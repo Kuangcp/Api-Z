@@ -58,20 +58,20 @@ func (r *Root) treeContextMenu(c *ui.Context, m *ui.Menu, row treeRow) {
 		m.Separator()
 	case app.NodeRequest:
 		req, _ := r.tree.Request(id)
-		if m.Item("打开").Chosen() {
-			r.openRequest(id)
-		}
 		if m.Item("复制请求").Chosen() {
 			r.duplicateRequest(id)
 		}
-		if m.Item("复制 URL").Chosen() {
-			c.WriteClipboard(req.URL)
-			c.Toast("已复制 URL")
+		if m.Item("复制 cURL").Chosen() {
+			r.copyRequestCurl(c, id)
 		}
 		if m.Item("移动到文件夹…").Chosen() {
 			r.beginMove(app.NodeRequest, id, req.Name)
 		}
 		m.Separator()
+		if m.Item("删除…").Chosen() {
+			r.beginDelete(kind, id, req.Name)
+		}
+		return
 	}
 	if m.Item("重命名…").Chosen() {
 		r.beginRename(kind, id, r.store.NodeName(kind, id))
@@ -86,6 +86,19 @@ func (r *Root) treeContextMenu(c *ui.Context, m *ui.Menu, row treeRow) {
 	if m.Item("删除…").Chosen() {
 		r.beginDelete(kind, id, r.store.NodeName(kind, id))
 	}
+}
+
+// copyRequestCurl copies a tree request as cURL with the current
+// environment and inherited auth applied, without opening it.
+func (r *Root) copyRequestCurl(c *ui.Context, id string) {
+	req, ok := r.tree.Request(id)
+	if !ok {
+		return
+	}
+	auth := r.tree.EffectiveAuth(id)
+	spec := app.BuildSpec(req.Method, req.URL, req.HeadersText, req.ParamsText, req.BodyText, auth, r.env.Map())
+	c.WriteClipboard(app.FormatCurl(spec))
+	c.Toast("已复制 cURL")
 }
 
 func (r *Root) nodeIdentity(row treeRow) (string, string) {
