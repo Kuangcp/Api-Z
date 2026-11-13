@@ -255,7 +255,7 @@ func (ed *Editor) requestHeader(c *ui.Context) {
 			ed.send()
 		}
 		if !running {
-			if ui.PrimaryButton(c, "发送").Clicked() {
+			if iconButton(c, iconSend, "发送").Clicked() {
 				ed.send()
 			}
 		} else {
@@ -263,18 +263,6 @@ func (ed *Editor) requestHeader(c *ui.Context) {
 				sess.Cancel()
 			}
 		}
-		if ui.Button(c, "保存").Clicked() {
-			ed.root.saveEditor(ed)
-			c.Toast("已保存")
-		}
-		ui.MenuButton(c, "代码", func(m *ui.Menu) {
-			if m.Item("复制为 cURL").Chosen() {
-				ed.copyAs(c, "cURL")
-			}
-			if m.Item("复制为 Raw HTTP").Chosen() {
-				ed.copyAs(c, "Raw HTTP")
-			}
-		}).Label("代码")
 		if ed.Dirty {
 			ui.Text(c, "●").FontSize(10).TextColor(t.Warning).Tooltip("有未保存的修改")
 		}

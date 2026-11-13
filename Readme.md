@@ -46,7 +46,7 @@ go run . -migrate \
 ## 功能（当前）
 
 - 集合 / 文件夹 / 请求树：集合以左侧 Tab 切换，超出宽度时保留最近使用的几个、其余收进下拉菜单；搜索、展开、键盘/鼠标选择；新建集合/文件夹/请求、重命名、复制请求、上移/下移、移动到文件夹（跨集合/层级）、拖拽排序/拖入文件夹、级联删除（二次确认）。
-- 请求编辑（左）/ 响应（右）左右分栏；编辑内容自动保存（防抖 450ms）：方法、URL、Params/Headers 文本/表格切换（启用开关、增删行、`! ` 禁用）、Body（JSON/表单/XML/无类型、JSON 格式化、高亮编辑器）、Auth（inherit/noauth/bearer/basic/apikey，API Key 位置选择与继承提示）。
+- 请求编辑（左）/ 响应（右）左右分栏；编辑内容自动保存（防抖 450ms）：发送按钮为图标；编辑自动保存，无独立保存/代码按钮。方法、URL、Params/Headers 文本/表格切换（启用开关、增删行、`! ` 禁用）、Body（JSON/表单/XML/无类型、JSON 格式化、高亮编辑器）、Auth（inherit/noauth/bearer/basic/apikey，API Key 位置选择与继承提示）。
 - 环境变量 `{{name}}` 替换、环境切换（标题栏 `标签 | 环境名`，标签→环境两级级联菜单，支持无环境/管理环境）、集合/文件夹/请求级 Auth 继承。
 - 环境语义色：按名称自动标记 local/dev 蓝、test/staging 绿、prod/生产 红；环境管理器可选手动颜色或自定义 `#rrggbb`，选择器文案跟随。
 - 环境管理器：多环境、tag 分组、变量增删改、设为当前；保存后立即用于替换。
@@ -54,7 +54,7 @@ go run . -migrate \
 - 发送 / 取消 / 120s 超时；状态码、耗时、大小、TTFT、TPOT、SSE 事件数；请求树显示运行中 Spinner；编辑防抖 450ms 自动保存，关窗前落盘。
 - 响应：Body / Headers / Request 三页签（Headers 同时展示请求头与响应头，并随 HAR 历史保存）；Raw（虚拟化、自动跟随末尾；SSE `data:` 行带 `HH:mm:ss.SSS` 时间戳，点击事件高亮并在底部弹出可拖动高度的格式化 JSON 详情）、Model（OpenAI/Responses delta 提取）、AG-UI（文本/工具调用/推理/中断卡片、interrupt 自定义 UI、MESSAGES_SNAPSHOT 完整还原）、JSON 美化；Request 展示实际发送快照并支持复制；二进制响应可推导文件名、保存到文件或用系统程序打开。
 - 多标签，每个标签独立的编辑与流式响应状态；`Ctrl+Tab` 在最近两个标签间切换，`Ctrl+K` 全局搜索。
-- 启动恢复上次打开的 Request（不存在则显示空白态）与主窗口位置/大小/最大化状态。
+- 启动恢复上次打开的 Request：自动展开所属集合/文件夹路径并在左侧树滚动定位；请求不存在则显示空白态。同时恢复主窗口位置/大小/最大化。
 - 无边框窗口 + 自绘标题栏（应用图标 + Api-Z、环境级联切换/数据目录/设置、拖动/双击最大化/窗口控制），窗口底色随主题。
 - 设置：主题（跟随系统/浅色/深色 + 默认/海洋/森林/暖阳配色 + 圆角 + 强调色）、界面字体与 90–125% 缩放、快捷键可改键（录制、冲突替换、恢复默认），落盘 `theme.json` / `keymap.json`。
 - 图标：设置/新建集合/导入/清空/环境管理等使用 Lucide 图标按钮；应用图标为 `assets/icon.svg` 生成的 Z 图标（256/512 PNG）。
@@ -63,7 +63,7 @@ go run . -migrate \
 - HAR 落盘与最近 10 次历史回看。
 - api-x 只读识别 + 一次性迁移（SQLite、environments.json、response artifacts）。
 - Postman Collection v2.1 导入/导出：嵌套文件夹、根请求、auth、禁用 Header、raw/urlencoded body、query/params、集合变量与描述；保留 `_api_x_id` 便于回导。
-- cURL 导入/导出：标题栏 cURL 图标或集合/文件夹右键「解析 cURL」直接读取剪贴板最新命令并创建请求（选中 Request 则插到该 Request 下方；选中文件夹则建在其下；否则建在当前集合根）；手动粘贴对话框仍保留；支持 `-X/-H/-d/-u/-b/-A/-e/-G/--json`、`$'...'` 与续行。请求树右键可「复制 cURL」，请求工具栏「代码」可复制为 cURL 或 Raw HTTP（均已应用环境变量与 Auth）。
+- cURL 导入/导出：标题栏 cURL 图标或集合/文件夹右键「解析 cURL」直接读取剪贴板最新命令并创建请求（选中 Request 则插到该 Request 下方；选中文件夹则建在其下；否则建在当前集合根）；手动粘贴对话框仍保留；支持 `-X/-H/-d/-u/-b/-A/-e/-G/--json`、`$'...'` 与续行。请求树右键提供「复制 cURL」「复制为 Raw HTTP」（均已应用环境变量与 Auth）。
 - `data/` 目录 Push/Pull：集合导出为 `data/collection/<id>.json`（Postman v2.1，保留 `_api_x_id`），环境写 `data/env/environments.json`；Pull 按 id 新增/合并，不删除本地数据。
 - OpenAPI 导入/刷新：`tags` → 文件夹、path/operation → 请求，支持 servers/环境变量 root、query/header 参数、JSON/multipart 示例；刷新按 `METHOD + normalized path` 合并，保留本地 URL/Headers/Params/Body/Auth，不删除服务端已移除的接口。
 - 集合/文件夹右键「设置…」：配置 Auth（inherit/noauth/bearer/basic/apikey）与集合级 OpenAPI 地址/root 来源（servers 主域名或 `{{env}}` 环境变量），留空地址可解绑。

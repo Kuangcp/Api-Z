@@ -1,7 +1,10 @@
 package ui
 
 import (
+	"fmt"
 	"testing"
+
+	"github.com/egoist/mygo/ui"
 
 	"api-z/app"
 )
@@ -73,5 +76,41 @@ func TestThemeSchemeAndRadius(t *testing.T) {
 	}
 	if got := themeRadius(app.ThemePrefs{}); got != 6 {
 		t.Fatalf("default radius = %v", got)
+	}
+}
+
+func TestRestoreExpandsTreePathAndScrolls(t *testing.T) {
+	store, paths := collectionTestStore(t)
+	cid, _ := store.CreateCollection("Demo")
+	parent, _ := store.CreateFolder(cid, "", "Parent")
+	child, _ := store.CreateFolder(cid, parent, "Child")
+	for i := 0; i < 40; i++ {
+		id, _ := store.CreateRequest(cid, child, fmt.Sprintf("R%02d", i))
+		_ = store.SaveRequest(app.Request{ID: id, Name: fmt.Sprintf("R%02d", i), Method: "GET", URL: "https://example.com"})
+		if i == 39 {
+			_ = app.SaveSessionPrefs(app.SessionPath(paths.ConfigDir), app.SessionPrefs{LastRequest: id})
+		}
+	}
+	tree, _ := store.LoadTree()
+	root := NewRoot(paths, store, tree, app.EnvState{Version: 1})
+	if !root.expanded["c:"+cid] || !root.expanded["f:"+parent] || !root.expanded["f:"+child] {
+		t.Fatalf("expanded = %#v", root.expanded)
+	}
+	rows := root.visibleRows()
+	idx := -1
+	for i, row := range rows {
+		if row.id == root.selected {
+			idx = i
+		}
+	}
+	if idx < 0 {
+		t.Fatalf("selected %q not visible in rows", root.selected)
+	}
+	tt := ui.NewTester(root.View, 1200, 500)
+	tt.Frame()
+	tt.Frame()
+	first, last := root.treeList.Visible()
+	if idx < first || idx > last {
+		t.Fatalf("selected row %d not scrolled into view (%d..%d)", idx, first, last)
 	}
 }

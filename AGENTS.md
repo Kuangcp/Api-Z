@@ -101,6 +101,7 @@ api-z 的存在理由就是这条链路。**不要退回全量字符串 + 每帧
 - Body 用 mygo `ui/editor`（JSON 高亮、行号、查找），顶部「类型」选择会 upsert/remove Content-Type；JSON 提供格式化按钮。Headers/Params 用 `ui/kv_editor.go` 的文本/表格双模式：表格行带启用开关、增删与 `! ` 禁用语义，文本仍是唯一持久化格式。
 - 响应区三段：Raw / Model / AGUI；非 SSE 且 JSON 时提供 JSON 美化（只读 editor）。
 - SSE 的 Raw 显示在 `data:` 行前加 `HH:mm:ss.SSS`；`Session` 维护 `lineEvent`/`sseEvents` 映射，点击事件行选中整组行，JSON 事件在底部用只读高亮编辑器展示，高度由 `SplitVerticalPercent`（`Editor.EventSplit`）可拖动。
+- 请求编辑顶部使用发送图标，不提供独立「保存」「代码」按钮；手动保存只保留快捷键，代码导出从请求右键菜单进入。
 - 响应区固定 Body / Headers / Request 三页签；Headers 同时渲染请求头与响应头，HAR `entry.request.headers`/`_apiX.requestHeadersFullText` 必须保存实际发送头。Request 读取 `Session.Spec()` 并用 `app.FormatHTTP` 展示实际发送内容，HAR 历史读取 request 快照，不要重新拼编辑器原文。
 - 二进制响应用 `Snap.FileName`（Content-Disposition/URL/Content-Type 推导），保存/打开走 `ui/binary.go`，复制文件用 `app.CopyFile`。
 - 原始行用等宽字体、`SingleLine`、`clipLine`；AGUI 文本用分块 markdown。
@@ -117,6 +118,7 @@ api-z 的存在理由就是这条链路。**不要退回全量字符串 + 每帧
 - 窗口为无边框自绘标题栏（`Root.titleBar`，38 DIP）：左侧应用图标 + Api-Z，右侧环境级联菜单/数据目录/设置与窗口按钮；整条 `DragWindow`。窗口底色用 `WindowBackgroundColor(themePrefs)`，圆角用 `WindowCornerRadius`。
 - 环境切换走 `ui/env_menu.go`：按钮显示 `标签 | 环境名`，弹出两级菜单（左标签、右环境），不要退回平铺 `ui.Select`；无环境和“管理环境…”放在左列底部；不再在标题栏重复放环境管理图标。
 - 主窗口用 `StateKey: "main"` + `windowStateStore` 恢复位置/大小/最大化；`session.json` 只存 `lastRequest`，打开/切换/关闭 Tab 后调用 `rememberActiveRequest`，缺失时保持空白态。
+- 启动恢复 Request 时必须调用 `revealRequestInTree`：展开所有祖先文件夹并设置 `Root.reveal`，由 sidebar 在 List 构建后 `ScrollTo` 定位；不要在 openRequest 时无条件滚动。
 - 树 CRUD 走 `app/store_crud.go`；UI 动作/弹窗在 `ui/tree_actions.go`，不要直接拼 SQL。
 - 集合/文件夹设置走 `ui/node_settings.go` + `Store.UpdateNodeMeta`：Auth 用 `app.MergeAuth`，OpenAPI 绑定用 `app.SetCollectionOpenAPI`（保留 auth/color 等其它 meta）；设置弹窗不要直接改数据库。
 - 左侧集合 Tab 由 `ui/collection_tabs.go` 管理：`Root.activeCollection` / `colMRU`，树只渲染当前集合；Tab 放不下时保留最近使用项，其余进「更多集合」下拉。新增集合/导入/OpenAPI 刷新/打开其他集合的请求后必须调用 `activateCollection`。

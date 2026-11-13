@@ -47,6 +47,7 @@ type Root struct {
 	treeList ui.ListState
 	search   string
 	selected string
+	reveal   string
 
 	activeCollection string
 	colMRU           []string
@@ -290,6 +291,16 @@ func (r *Root) sidebar(c *ui.Context) {
 			ui.Text(c, fmt.Sprintf("%d 个请求", len(r.tree.Requests))).FontSize(11).TextColor(t.TextMuted)
 		})
 		rows := r.visibleRows()
+		revealIdx := -1
+		if r.reveal != "" {
+			for i, row := range rows {
+				if row.id == r.reveal {
+					revealIdx = i
+					break
+				}
+			}
+			r.reveal = ""
+		}
 		ui.List(c, &r.treeList, len(rows), func(i int) {
 			if i < 0 || i >= len(rows) {
 				return
@@ -308,6 +319,9 @@ func (r *Root) sidebar(c *ui.Context) {
 				ui.Text(c, msg).Padding(12).TextColor(t.TextMuted)
 			}
 		})
+		if revealIdx >= 0 {
+			r.treeList.ScrollTo(revealIdx, ui.Start)
+		}
 	})
 }
 
@@ -503,6 +517,9 @@ func (r *Root) reloadTree() {
 func (r *Root) openRequest(id string) {
 	for i, ed := range r.tabs {
 		if ed.ID == id {
+			if meta, found := r.tree.Request(id); found {
+				r.activateCollection(meta.CollectionID)
+			}
 			r.active = i
 			r.selected = id
 			r.touchMRU(id)
@@ -526,6 +543,25 @@ func (r *Root) openRequest(id string) {
 	r.rememberActiveRequest()
 }
 
+// revealRequestInTree expands the request's folder path and scrolls the
+// sidebar list so the restored/selected request is visible.
+func (r *Root) revealRequestInTree(id string) {
+	req, ok := r.tree.Request(id)
+	if !ok {
+		return
+	}
+	r.expanded["c:"+req.CollectionID] = true
+	for parent := req.FolderID; parent != ""; {
+		r.expanded["f:"+parent] = true
+		folder, found := r.folderByID(parent)
+		if !found {
+			break
+		}
+		parent = folder.ParentID
+	}
+	r.reveal = id
+}
+
 // restoreLastRequest reopens the request the previous session left active.
 // A request that no longer exists leaves the app on the blank state.
 func (r *Root) restoreLastRequest() {
@@ -541,6 +577,7 @@ func (r *Root) restoreLastRequest() {
 		return
 	}
 	r.openRequest(prefs.LastRequest)
+	r.revealRequestInTree(prefs.LastRequest)
 }
 
 func (r *Root) rememberActiveRequest() {

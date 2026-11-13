@@ -64,6 +64,9 @@ func (r *Root) treeContextMenu(c *ui.Context, m *ui.Menu, row treeRow) {
 		if m.Item("复制 cURL").Chosen() {
 			r.copyRequestCurl(c, id)
 		}
+		if m.Item("复制为 Raw HTTP").Chosen() {
+			r.copyRequestRawHTTP(c, id)
+		}
 		if m.Item("移动到文件夹…").Chosen() {
 			r.beginMove(app.NodeRequest, id, req.Name)
 		}
@@ -99,6 +102,18 @@ func (r *Root) copyRequestCurl(c *ui.Context, id string) {
 	spec := app.BuildSpec(req.Method, req.URL, req.HeadersText, req.ParamsText, req.BodyText, auth, r.env.Map())
 	c.WriteClipboard(app.FormatCurl(spec))
 	c.Toast("已复制 cURL")
+}
+
+// copyRequestRawHTTP copies the same resolved request as a raw HTTP message.
+func (r *Root) copyRequestRawHTTP(c *ui.Context, id string) {
+	req, ok := r.tree.Request(id)
+	if !ok {
+		return
+	}
+	auth := r.tree.EffectiveAuth(id)
+	spec := app.BuildSpec(req.Method, req.URL, req.HeadersText, req.ParamsText, req.BodyText, auth, r.env.Map())
+	c.WriteClipboard(app.FormatHTTP(spec))
+	c.Toast("已复制 Raw HTTP")
 }
 
 func (r *Root) nodeIdentity(row treeRow) (string, string) {

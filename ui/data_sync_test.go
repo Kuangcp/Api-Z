@@ -43,7 +43,7 @@ func TestDataDirActionsUI(t *testing.T) {
 	}
 }
 
-func TestCopyRequestCodeUI(t *testing.T) {
+func TestCopyRequestRawHTTPMenu(t *testing.T) {
 	store, paths := collectionTestStore(t)
 	collID, _ := store.CreateCollection("Demo")
 	reqID, _ := store.CreateRequest(collID, "", "Echo")
@@ -55,24 +55,8 @@ func TestCopyRequestCodeUI(t *testing.T) {
 	root := NewRoot(paths, store, tree, app.EnvState{Version: 1})
 	tt := ui.NewTester(root.View, 1000, 700)
 	tt.Frame()
-	root.openRequest(reqID)
-	tt.Frame()
 
-	if err := tt.Click("代码"); err != nil {
-		t.Fatal(err)
-	}
-	tt.Frame()
-	if err := tt.ChooseMenuItem("复制为 cURL"); err != nil {
-		t.Fatal(err)
-	}
-	tt.Frame()
-	got := tt.Clipboard()
-	if !strings.HasPrefix(got, "curl -X POST 'https://example.com/echo'") ||
-		!strings.Contains(got, "--data-raw") || !strings.Contains(got, "Content-Type: application/json") {
-		t.Fatalf("curl clipboard = %q", got)
-	}
-
-	if err := tt.Click("代码"); err != nil {
+	if err := tt.RightClick("POST Echo"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()
@@ -80,7 +64,7 @@ func TestCopyRequestCodeUI(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	got = tt.Clipboard()
+	got := tt.Clipboard()
 	if !strings.HasPrefix(got, "POST /echo HTTP/1.1\nHost: example.com\n") ||
 		!strings.HasSuffix(got, "\n\n{\"a\":1}") {
 		t.Fatalf("raw http clipboard = %q", got)

@@ -164,21 +164,6 @@ func (r *Root) curlTargetForNode(kind, id string) (collectionID, folderID, label
 	return "", "", "", false
 }
 
-// copyAs puts the request as it would be sent on the clipboard, with the
-// current environment and auth resolved.
-func (ed *Editor) copyAs(c *ui.Context, kind string) {
-	if ed.root == nil {
-		return
-	}
-	spec := ed.buildSpec()
-	text := app.FormatCurl(spec)
-	if kind == "Raw HTTP" {
-		text = app.FormatHTTP(spec)
-	}
-	c.WriteClipboard(text)
-	c.Toast("已复制" + kind)
-}
-
 func (r *Root) curlTarget() (collectionID, folderID, label string, ok bool) {
 	sel := r.selected
 	switch {
