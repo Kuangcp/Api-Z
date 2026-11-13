@@ -52,7 +52,7 @@ go run . -migrate \
 - 环境管理器：多环境、tag 分组、变量增删改、设为当前；保存后立即用于替换。
 - 变量补全：URL/Headers/Params 输入 `{{` 弹出当前环境变量，Body 编辑器用 completion 菜单；插入 `{{key}}` 并保留光标。
 - 发送 / 取消 / 120s 超时；状态码、耗时、大小、TTFT、TPOT、SSE 事件数；请求树显示运行中 Spinner；编辑防抖 450ms 自动保存，关窗前落盘。
-- 响应：Body / Headers / Request 三页签（Headers 同时展示请求头与响应头，并随 HAR 历史保存）；Raw（虚拟化、自动跟随末尾；SSE `data:` 行带 `HH:mm:ss.SSS` 时间戳，点击事件高亮并在底部弹出可拖动高度的格式化 JSON 详情）、Model（OpenAI/Responses delta 提取）、AG-UI（文本/工具调用/推理/中断卡片、interrupt 自定义 UI、MESSAGES_SNAPSHOT 完整还原）、JSON 美化；Request 展示实际发送快照并支持复制；二进制响应可推导文件名、保存到文件或用系统程序打开。
+- 响应：Body / Headers / Request 三页签（Headers 同时展示请求头与响应头，并随 HAR 历史保存）；Raw（虚拟化、自动跟随末尾；SSE `data:` 行带 `HH:mm:ss.SSS` 时间戳，点击事件高亮并在底部弹出可拖动高度的格式化 JSON 详情）、Model（OpenAI/Responses delta 提取）、AG-UI（文本/工具调用/推理/中断卡片、interrupt 自定义 UI、MESSAGES_SNAPSHOT 完整还原）、JSON 美化（Content-Type 为 JSON 时默认自动打开，每个响应只自动展开一次，手动关闭后不再弹）；Request 展示实际发送快照并支持复制；二进制响应可推导文件名、保存到文件或用系统程序打开。
 - 多标签，每个标签独立的编辑与流式响应状态；`Ctrl+Tab` 在最近两个标签间切换，`Ctrl+K` 全局搜索。
 - 启动恢复上次打开的 Request：自动展开所属集合/文件夹路径并在左侧树滚动定位；请求不存在则显示空白态。同时恢复主窗口位置/大小/最大化。
 - 无边框窗口 + 自绘标题栏（应用图标 + Api-Z、环境级联切换/数据目录/设置、拖动/双击最大化/窗口控制），窗口底色随主题。

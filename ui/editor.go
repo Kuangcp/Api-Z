@@ -55,9 +55,10 @@ type Editor struct {
 	modelVer      uint64
 	modelLines    []string
 
-	jsonOpen   bool
-	jsonSource string
-	jsonEd     *editor.State
+	jsonOpen       bool
+	jsonSource     string
+	jsonAutoSource string
+	jsonEd         *editor.State
 
 	autoOpen  bool
 	autoField string
@@ -394,6 +395,7 @@ func (ed *Editor) send() {
 	ed.SelectedEvent = -1
 	ed.eventIdx = -1
 	ed.eventEd = nil
+	ed.jsonAutoSource = ""
 	sess := ed.root.session(ed.ID)
 	sess.Start(spec)
 	ed.root.status = "请求中: " + ed.Method + " " + app.RedactURL(spec.URL)

@@ -75,3 +75,32 @@ func mustSpec(t *testing.T, root *Root, id string) httpclient.Spec {
 	}
 	return s
 }
+
+func TestNonJSONResponseStaysRaw(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		fmt.Fprint(w, "plain text")
+	}))
+	defer srv.Close()
+	store, paths := collectionTestStore(t)
+	cid, _ := store.CreateCollection("Demo")
+	rid, _ := store.CreateRequest(cid, "", "Text")
+	_ = store.SaveRequest(app.Request{ID: rid, Name: "Text", Method: "GET", URL: srv.URL})
+	tree, _ := store.LoadTree()
+	root := NewRoot(paths, store, tree, app.EnvState{Version: 1})
+	root.openRequest(rid)
+	ed := root.tabs[0]
+	tt := ui.NewTester(root.View, 1200, 800)
+	tt.Frame()
+	if err := tt.Click("发送"); err != nil {
+		t.Fatal(err)
+	}
+	root.session(rid).Wait()
+	tt.Frame()
+	if ed.jsonOpen || ed.jsonEd != nil {
+		t.Fatal("non-JSON response opened the JSON view")
+	}
+	if !tt.HasText("plain text") {
+		t.Fatalf("raw body = %v", tt.Texts())
+	}
+}

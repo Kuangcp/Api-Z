@@ -41,6 +41,7 @@ func (ed *Editor) responsePane(c *ui.Context) {
 		ed.jsonEd = nil
 		ed.jsonSource = ""
 	}
+	ed.maybeAutoOpenJSON(sess, snap)
 
 	ui.Column(c).Fill().Children(func() {
 		ed.responseToolbar(c, sess, snap)
@@ -261,6 +262,10 @@ func (ed *Editor) toggleJSON(sess *app.Session, snap app.SessionSnapshot) {
 		ed.jsonOpen = false
 		return
 	}
+	ed.openJSON(sess, snap)
+}
+
+func (ed *Editor) openJSON(sess *app.Session, snap app.SessionSnapshot) {
 	raw := sess.CopyText()
 	var buf bytes.Buffer
 	if err := json.Indent(&buf, []byte(raw), "", "  "); err == nil {
@@ -271,6 +276,19 @@ func (ed *Editor) toggleJSON(sess *app.Session, snap app.SessionSnapshot) {
 	ed.jsonEd = &editor.State{Buffer: b, ReadOnly: true}
 	ed.jsonSource = snap.SpoolPath
 	ed.jsonOpen = true
+}
+
+// maybeAutoOpenJSON shows formatted JSON once per response when the server
+// declared a JSON content type. A manual toggle afterwards is respected.
+func (ed *Editor) maybeAutoOpenJSON(sess *app.Session, snap app.SessionSnapshot) {
+	if !snap.Done || snap.IsSSE || snap.Binary || !app.IsJSONContentType(snap.ContentType) {
+		return
+	}
+	if ed.jsonAutoSource == snap.SpoolPath {
+		return
+	}
+	ed.jsonAutoSource = snap.SpoolPath
+	ed.openJSON(sess, snap)
 }
 
 func (ed *Editor) rawView(c *ui.Context, sess *app.Session, snap app.SessionSnapshot) {

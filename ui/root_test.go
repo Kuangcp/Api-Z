@@ -70,15 +70,8 @@ func TestRootRequestLoop(t *testing.T) {
 	if !tt.HasText("200 OK") {
 		t.Fatalf("status not shown: %v", tt.Texts())
 	}
-	if !tt.HasText(`{"ok":true}`) {
-		t.Fatalf("body not shown: %v", tt.Texts())
-	}
-	if err := tt.Click("JSON"); err != nil {
-		t.Fatal(err)
-	}
-	tt.Frame()
-	if len(root.tabs) == 0 || root.tabs[0].jsonEd == nil {
-		t.Fatal("json editor not built")
+	if len(root.tabs) == 0 || !root.tabs[0].jsonOpen || root.tabs[0].jsonEd == nil {
+		t.Fatal("JSON response did not auto-open the formatted view")
 	}
 	if got := root.tabs[0].jsonEd.Buffer.String(); !strings.Contains(got, `"ok": true`) {
 		t.Fatalf("pretty JSON = %q", got)

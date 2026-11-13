@@ -102,6 +102,7 @@ api-z 的存在理由就是这条链路。**不要退回全量字符串 + 每帧
 - 响应区三段：Raw / Model / AGUI；非 SSE 且 JSON 时提供 JSON 美化（只读 editor）。
 - SSE 的 Raw 显示在 `data:` 行前加 `HH:mm:ss.SSS`；`Session` 维护 `lineEvent`/`sseEvents` 映射，点击事件行选中整组行，JSON 事件在底部用只读高亮编辑器展示，高度由 `SplitVerticalPercent`（`Editor.EventSplit`）可拖动。
 - 请求编辑顶部使用发送图标，不提供独立「保存」「代码」按钮；手动保存只保留快捷键，代码导出从请求右键菜单进入。
+- JSON 响应（`app.IsJSONContentType`、非 SSE/二进制、已完成）在 `Editor.maybeAutoOpenJSON` 中每个 spool 自动打开一次；用户手动关闭后同响应不再自动打开。
 - 响应区固定 Body / Headers / Request 三页签；Headers 同时渲染请求头与响应头，HAR `entry.request.headers`/`_apiX.requestHeadersFullText` 必须保存实际发送头。Request 读取 `Session.Spec()` 并用 `app.FormatHTTP` 展示实际发送内容，HAR 历史读取 request 快照，不要重新拼编辑器原文。
 - 二进制响应用 `Snap.FileName`（Content-Disposition/URL/Content-Type 推导），保存/打开走 `ui/binary.go`，复制文件用 `app.CopyFile`。
 - 原始行用等宽字体、`SingleLine`、`clipLine`；AGUI 文本用分块 markdown。
