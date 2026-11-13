@@ -24,6 +24,9 @@ func (r *Root) treeContextMenu(c *ui.Context, m *ui.Menu, row treeRow) {
 		if m.Item("导出 Postman…").Chosen() {
 			r.exportPostmanDialog(id, r.store.NodeName(app.NodeCollection, id))
 		}
+		if m.Item("设置…").Chosen() {
+			r.openNodeSettings(app.NodeCollection, id)
+		}
 		if col, ok := r.tree.Collection(id); ok {
 			if source, _ := app.CollectionOpenAPIInfo(col.MetaJSON); source != "" {
 				if m.Item("刷新 OpenAPI").Chosen() {
@@ -42,6 +45,9 @@ func (r *Root) treeContextMenu(c *ui.Context, m *ui.Menu, row treeRow) {
 		}
 		if m.Item("移动到文件夹…").Chosen() {
 			r.beginMove(app.NodeFolder, id, folder.Name)
+		}
+		if m.Item("设置…").Chosen() {
+			r.openNodeSettings(app.NodeFolder, id)
 		}
 		m.Separator()
 	case app.NodeRequest:

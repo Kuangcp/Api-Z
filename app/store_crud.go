@@ -565,3 +565,22 @@ func (s *Store) reorderSiblings(kind, collectionID, parentFolderID, id, beforeID
 	}
 	return tx.Commit()
 }
+
+// UpdateNodeMeta replaces meta_json for a collection or folder.
+func (s *Store) UpdateNodeMeta(kind, id, metaJSON string) error {
+	var table string
+	switch kind {
+	case NodeCollection:
+		table = "collections"
+	case NodeFolder:
+		table = "folders"
+	default:
+		return fmt.Errorf("unknown node kind %q", kind)
+	}
+	if strings.TrimSpace(metaJSON) == "" {
+		metaJSON = "{}"
+	}
+	_, err := s.db.Exec(`UPDATE `+table+` SET meta_json = ?, updated_at = ? WHERE id = ?`,
+		metaJSON, time.Now().UnixMilli(), id)
+	return err
+}

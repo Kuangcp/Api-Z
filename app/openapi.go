@@ -603,3 +603,35 @@ func mergeOpenAPIRequestMeta(oldMeta, newMeta string) string {
 	}
 	return string(b)
 }
+
+// SetCollectionOpenAPI binds or unbinds a collection's OpenAPI source and
+// root mode while preserving auth, color and other metadata.
+func SetCollectionOpenAPI(metaJSON, sourceURL string, root *OpenAPIRoot) string {
+	meta := map[string]json.RawMessage{}
+	_ = json.Unmarshal([]byte(strings.TrimSpace(metaJSON)), &meta)
+	if meta == nil {
+		meta = map[string]json.RawMessage{}
+	}
+	sourceURL = strings.TrimSpace(sourceURL)
+	if sourceURL == "" {
+		delete(meta, "openapi")
+	} else {
+		openapi := map[string]any{}
+		if raw, ok := meta["openapi"]; ok {
+			_ = json.Unmarshal(raw, &openapi)
+		}
+		openapi["sourceUrl"] = sourceURL
+		if root != nil {
+			openapi["root"] = root
+		}
+		raw, err := json.Marshal(openapi)
+		if err == nil {
+			meta["openapi"] = raw
+		}
+	}
+	out, err := json.Marshal(meta)
+	if err != nil {
+		return metaJSON
+	}
+	return string(out)
+}

@@ -64,6 +64,7 @@ go run . -migrate \
 - cURL 导入/导出：粘贴 sh 风格 curl 命令（含 `-X/-H/-d/-u/-b/-A/-e/-G/--json`、`$'...'` 与续行）；请求工具栏「代码」可复制为 cURL 或 Raw HTTP（已应用环境变量与 Auth）。
 - `data/` 目录 Push/Pull：集合导出为 `data/collection/<id>.json`（Postman v2.1，保留 `_api_x_id`），环境写 `data/env/environments.json`；Pull 按 id 新增/合并，不删除本地数据。
 - OpenAPI 导入/刷新：`tags` → 文件夹、path/operation → 请求，支持 servers/环境变量 root、query/header 参数、JSON/multipart 示例；刷新按 `METHOD + normalized path` 合并，保留本地 URL/Headers/Params/Body/Auth，不删除服务端已移除的接口。
+- 集合/文件夹右键「设置…」：配置 Auth（inherit/noauth/bearer/basic/apikey）与集合级 OpenAPI 地址/root 来源（servers 主域名或 `{{env}}` 环境变量），留空地址可解绑。
 
 ## 数据兼容
 

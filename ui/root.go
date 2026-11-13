@@ -95,7 +95,17 @@ type Root struct {
 
 	settingsOpen bool
 	settingsTab  int
-	appIcon      ui.ImageSource
+
+	nodeSettingsOpen     bool
+	nodeSettingsKind     string
+	nodeSettingsID       string
+	nodeSettingsSection  int
+	nodeSettingsAuth     app.Auth
+	nodeSettingsSource   string
+	nodeSettingsRootMode int
+	nodeSettingsEnvKey   string
+	nodeSettingsErr      string
+	appIcon              ui.ImageSource
 
 	themePrefs  app.ThemePrefs
 	themePath   string
@@ -201,6 +211,7 @@ func (r *Root) View(c *ui.Context) {
 	r.envManager(c)
 	r.moveModal(c)
 	r.settingsModal(c)
+	r.nodeSettingsModal(c)
 	r.openAPIDialog(c)
 	r.curlDialog(c)
 }

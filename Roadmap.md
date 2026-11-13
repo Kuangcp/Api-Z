@@ -217,7 +217,7 @@ api-z 使用自己的数据目录与 SQLite（WAL）：
 - Multipart：文本/JSON/文件 part、文件选择器、MIME 猜测、大文件流式写；cURL `-F` 导入。
 - 网络设置：连接/读取/请求超时、HTTP/1.1/2、HTTP/HTTPS 代理、bypass 正则。
 - 自定义 SSE 文本提取路径。
-- 集合/文件夹设置：Auth、颜色、OpenAPI 地址/根地址编辑与颜色继承。
+- 集合/文件夹设置：Auth、OpenAPI 地址/根地址编辑（已完成）；颜色与继承待补。
 
 第四批（交互与恢复）：
 - 全局搜索扩展到 Headers/Body、多关键词、位置展示与方向键导航。
@@ -288,6 +288,7 @@ go run . -migrate -api-x-home ~/.local/share/api-x -data-dir /tmp/api-z-smoke
 - [x] P4 OpenAPI、data/ Push/Pull、curl/代码片段、api-x HAR 历史读取
 - [ ] P5 MCP（SSE / streamable HTTP / stdio）
 - [x] P6 第一批：响应三页签/请求快照/二进制保存打开/自动保存
+- [x] P6 第三批（部分）：集合/文件夹 Auth 与 OpenAPI 绑定设置
 
 ### 已实测
 

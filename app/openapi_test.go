@@ -215,3 +215,22 @@ func TestRefreshOpenAPICollection(t *testing.T) {
 		}
 	}
 }
+
+func TestSetCollectionOpenAPIBinding(t *testing.T) {
+	meta := `{"auth":{"type":"bearer"},"color":"#123456","openapi":{"sourceUrl":"https://old","baseUrl":"https://api","root":{"mode":"baseUrl"}}}`
+	got := SetCollectionOpenAPI(meta, "localhost:8080/v3/api-docs", &OpenAPIRoot{Mode: OpenAPIRootEnv, EnvKey: "host"})
+	source, root := CollectionOpenAPIInfo(got)
+	if source != "localhost:8080/v3/api-docs" || root == nil || root.Mode != OpenAPIRootEnv || root.EnvKey != "host" {
+		t.Fatalf("binding = %q %#v", source, root)
+	}
+	if ParseAuth(got).Type != "bearer" || !strings.Contains(got, `"color":"#123456"`) {
+		t.Fatalf("metadata lost: %s", got)
+	}
+	got = SetCollectionOpenAPI(got, "", nil)
+	if source, root := CollectionOpenAPIInfo(got); source != "" || root != nil {
+		t.Fatalf("unbind = %q %#v", source, root)
+	}
+	if ParseAuth(got).Type != "bearer" {
+		t.Fatalf("auth lost on unbind: %s", got)
+	}
+}
