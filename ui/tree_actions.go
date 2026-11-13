@@ -24,6 +24,9 @@ func (r *Root) treeContextMenu(c *ui.Context, m *ui.Menu, row treeRow) {
 		if m.Item("导出 Postman…").Chosen() {
 			r.exportPostmanDialog(id, r.store.NodeName(app.NodeCollection, id))
 		}
+		if m.Item("解析 cURL").Chosen() {
+			r.importCurlAt(c, app.NodeCollection, id)
+		}
 		if m.Item("设置…").Chosen() {
 			r.openNodeSettings(app.NodeCollection, id)
 		}
@@ -45,6 +48,9 @@ func (r *Root) treeContextMenu(c *ui.Context, m *ui.Menu, row treeRow) {
 		}
 		if m.Item("移动到文件夹…").Chosen() {
 			r.beginMove(app.NodeFolder, id, folder.Name)
+		}
+		if m.Item("解析 cURL").Chosen() {
+			r.importCurlAt(c, app.NodeFolder, id)
 		}
 		if m.Item("设置…").Chosen() {
 			r.openNodeSettings(app.NodeFolder, id)

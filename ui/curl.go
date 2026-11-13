@@ -17,6 +17,124 @@ func (r *Root) openCurlDialog(c *ui.Context) {
 	}
 }
 
+// importCurlFromClipboard creates a request from the latest clipboard cURL
+// command, under the selected collection/folder or the active collection root.
+func (r *Root) importCurlFromClipboard(c *ui.Context) {
+	text := strings.TrimSpace(c.ReadClipboard())
+	if text == "" {
+		c.Toast("剪贴板为空")
+		return
+	}
+	collectionID, folderID, label, ok := r.selectedDirectoryCurlTarget()
+	if !ok {
+		c.Toast("请先创建集合")
+		return
+	}
+	id, err := r.createCurlRequest(collectionID, folderID, text)
+	if err != nil {
+		c.Toast("导入 cURL 失败: " + err.Error())
+		r.err = "导入 cURL 失败: " + err.Error()
+		return
+	}
+	r.openRequest(id)
+	r.status = "已从剪贴板创建请求 → " + label
+	r.err = ""
+	c.Toast("已从剪贴板创建请求")
+}
+
+// importCurlAt creates a request under an explicit collection or folder,
+// used by the tree context menu.
+func (r *Root) importCurlAt(c *ui.Context, kind, id string) {
+	text := strings.TrimSpace(c.ReadClipboard())
+	if text == "" {
+		c.Toast("剪贴板为空")
+		return
+	}
+	collectionID, folderID, label, ok := r.curlTargetForNode(kind, id)
+	if !ok {
+		c.Toast("目标目录不存在")
+		return
+	}
+	requestID, err := r.createCurlRequest(collectionID, folderID, text)
+	if err != nil {
+		c.Toast("解析 cURL 失败: " + err.Error())
+		r.err = "解析 cURL 失败: " + err.Error()
+		return
+	}
+	r.openRequest(requestID)
+	r.status = "已从剪贴板创建请求 → " + label
+	r.err = ""
+	c.Toast("已从剪贴板创建请求")
+}
+
+func (r *Root) createCurlRequest(collectionID, folderID, text string) (string, error) {
+	parsed, err := app.ParseCurl(text)
+	if err != nil {
+		return "", err
+	}
+	name := app.CurlRequestName(parsed)
+	id, err := r.store.CreateRequest(collectionID, folderID, name)
+	if err != nil {
+		return "", err
+	}
+	req, ok, err := r.store.GetRequest(id)
+	if err != nil || !ok {
+		return "", fmt.Errorf("创建请求失败")
+	}
+	req.Name = name
+	req.Method = parsed.Method
+	req.URL = parsed.URL
+	req.HeadersText = parsed.HeadersText
+	req.ParamsText = parsed.ParamsText
+	req.BodyText = parsed.BodyText
+	if err := r.store.SaveRequest(req); err != nil {
+		return "", err
+	}
+	r.expandPath(collectionID, folderID)
+	r.reloadTree()
+	r.selected = id
+	return id, nil
+}
+
+// selectedDirectoryCurlTarget only accepts a selected collection or folder.
+// A selected request (or nothing) falls back to the active collection root.
+func (r *Root) selectedDirectoryCurlTarget() (collectionID, folderID, label string, ok bool) {
+	sel := r.selected
+	switch {
+	case strings.HasPrefix(sel, "c:"):
+		id := strings.TrimPrefix(sel, "c:")
+		if col, found := r.tree.Collection(id); found {
+			return id, "", col.Name + "（根）", true
+		}
+	case strings.HasPrefix(sel, "f:"):
+		if f, found := r.folderByID(strings.TrimPrefix(sel, "f:")); found {
+			return f.CollectionID, f.ID, f.Name, true
+		}
+	}
+	if col, found := r.tree.Collection(r.activeCollection); found {
+		return col.ID, "", col.Name + "（根）", true
+	}
+	if len(r.tree.Collections) > 0 {
+		col := r.tree.Collections[0]
+		return col.ID, "", col.Name + "（根）", true
+	}
+	return "", "", "请先创建一个集合", false
+}
+
+func (r *Root) curlTargetForNode(kind, id string) (collectionID, folderID, label string, ok bool) {
+	switch kind {
+	case app.NodeCollection:
+		if col, found := r.tree.Collection(id); found {
+			return id, "", col.Name + "（根）", true
+		}
+	case app.NodeFolder:
+		if f, found := r.folderByID(id); found {
+			return f.CollectionID, f.ID, f.Name, true
+		}
+	}
+	return "", "", "", false
+}
+
 // copyAs puts the request as it would be sent on the clipboard, with the
 // current environment and auth resolved.
 func (ed *Editor) copyAs(c *ui.Context, kind string) {
@@ -100,34 +218,9 @@ func (r *Root) curlDialog(c *ui.Context) {
 }
 
 func (r *Root) importCurlText(text string) (string, error) {
-	parsed, err := app.ParseCurl(text)
-	if err != nil {
-		return "", err
-	}
 	collectionID, folderID, _, ok := r.curlTarget()
 	if !ok {
 		return "", fmt.Errorf("请先选择集合或文件夹")
 	}
-	name := app.CurlRequestName(parsed)
-	id, err := r.store.CreateRequest(collectionID, folderID, name)
-	if err != nil {
-		return "", err
-	}
-	req, ok, err := r.store.GetRequest(id)
-	if err != nil || !ok {
-		return "", fmt.Errorf("创建请求失败")
-	}
-	req.Name = name
-	req.Method = parsed.Method
-	req.URL = parsed.URL
-	req.HeadersText = parsed.HeadersText
-	req.ParamsText = parsed.ParamsText
-	req.BodyText = parsed.BodyText
-	if err := r.store.SaveRequest(req); err != nil {
-		return "", err
-	}
-	r.expandPath(collectionID, folderID)
-	r.reloadTree()
-	r.selected = id
-	return id, nil
+	return r.createCurlRequest(collectionID, folderID, text)
 }

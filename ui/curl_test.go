@@ -62,3 +62,73 @@ func TestCurlDialog(t *testing.T) {
 		t.Fatalf("unexpected err %q", root.curlErr)
 	}
 }
+
+func TestCurlImportFromClipboardTitlebar(t *testing.T) {
+	store, paths := collectionTestStore(t)
+	cid, _ := store.CreateCollection("Demo")
+	fid, _ := store.CreateFolder(cid, "", "Pets")
+	tree, _ := store.LoadTree()
+	root := NewRoot(paths, store, tree, app.EnvState{Version: 1})
+	root.selected = "f:" + fid
+	tt := ui.NewTester(root.View, 1200, 800)
+	tt.Frame()
+	tt.SetClipboard(`curl 'https://api.example.com/pets?x=1' -H 'Accept: application/json' -d 'a=1'`)
+	if err := tt.Click("从剪贴板导入 cURL"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tree, _ = store.LoadTree()
+	if len(tree.Requests) != 1 {
+		t.Fatalf("requests = %#v", tree.Requests)
+	}
+	req := tree.Requests[0]
+	if req.FolderID != fid || req.Method != "POST" || req.URL != "https://api.example.com/pets?x=1" ||
+		req.HeadersText != "Accept: application/json" || req.BodyText != "a=1" {
+		t.Fatalf("request = %#v", req)
+	}
+	if len(root.tabs) != 1 || root.tabs[0].ID != req.ID {
+		t.Fatalf("tabs = %#v", root.tabs)
+	}
+}
+
+func TestCurlImportFromClipboardRoot(t *testing.T) {
+	store, paths := collectionTestStore(t)
+	cid, _ := store.CreateCollection("Demo")
+	tree, _ := store.LoadTree()
+	root := NewRoot(paths, store, tree, app.EnvState{Version: 1})
+	root.selected = ""
+	tt := ui.NewTester(root.View, 1200, 800)
+	tt.Frame()
+	tt.SetClipboard(`curl 'https://api.example.com/root'`)
+	if err := tt.Click("从剪贴板导入 cURL"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tree, _ = store.LoadTree()
+	if len(tree.Requests) != 1 || tree.Requests[0].FolderID != "" || tree.Requests[0].CollectionID != cid {
+		t.Fatalf("requests = %#v", tree.Requests)
+	}
+}
+
+func TestCurlImportFromFolderContextMenu(t *testing.T) {
+	store, paths := collectionTestStore(t)
+	cid, _ := store.CreateCollection("Demo")
+	fid, _ := store.CreateFolder(cid, "", "Pets")
+	tree, _ := store.LoadTree()
+	root := NewRoot(paths, store, tree, app.EnvState{Version: 1})
+	tt := ui.NewTester(root.View, 1200, 800)
+	tt.Frame()
+	tt.SetClipboard(`curl 'https://api.example.com/ctx'`)
+	if err := tt.RightClick("Pets"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if err := tt.ChooseMenuItem("解析 cURL"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tree, _ = store.LoadTree()
+	if len(tree.Requests) != 1 || tree.Requests[0].FolderID != fid {
+		t.Fatalf("requests = %#v", tree.Requests)
+	}
+}

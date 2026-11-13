@@ -229,6 +229,9 @@ func (r *Root) titleBar(c *ui.Context) {
 		}
 		ui.Text(c, "Api-Z").FontSize(12.5).Bold()
 		ui.Spacer(c)
+		if iconButtonPlain(c, iconTerminal, "从剪贴板导入 cURL").Clicked() {
+			r.importCurlFromClipboard(c)
+		}
 		r.envMenu(c)
 		iconMenuButton(c, iconDatabase, "数据目录", func(m *ui.Menu) {
 			if m.Item("Push 到 data/").Chosen() {
