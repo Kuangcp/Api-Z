@@ -4,7 +4,7 @@ go 1.27.3
 
 require (
 	github.com/andybalholm/brotli v1.1.0
-	github.com/egoist/mygo v0.8.3
+	github.com/egoist/mygo v0.9.0
 	modernc.org/sqlite v1.33.1
 )
 
