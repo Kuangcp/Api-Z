@@ -132,3 +132,32 @@ func TestCurlImportFromFolderContextMenu(t *testing.T) {
 		t.Fatalf("requests = %#v", tree.Requests)
 	}
 }
+
+func TestCurlImportBelowSelectedRequest(t *testing.T) {
+	store, paths := collectionTestStore(t)
+	cid, _ := store.CreateCollection("Demo")
+	r1, _ := store.CreateRequest(cid, "", "First")
+	r2, _ := store.CreateRequest(cid, "", "Second")
+	_ = store.SaveRequest(app.Request{ID: r1, Name: "First", Method: "GET", URL: "https://example.com/1"})
+	_ = store.SaveRequest(app.Request{ID: r2, Name: "Second", Method: "GET", URL: "https://example.com/2"})
+	tree, _ := store.LoadTree()
+	root := NewRoot(paths, store, tree, app.EnvState{Version: 1})
+	root.selected = r1
+	tt := ui.NewTester(root.View, 1200, 800)
+	tt.Frame()
+	tt.SetClipboard(`curl 'https://api.example.com/imported'`)
+	if err := tt.Click("从剪贴板导入 cURL"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tree, _ = store.LoadTree()
+	var names []string
+	for _, req := range tree.Requests {
+		if req.CollectionID == cid && req.FolderID == "" {
+			names = append(names, req.Name)
+		}
+	}
+	if len(names) != 3 || names[0] != "First" || names[1] != "api.example.com/imported" || names[2] != "Second" {
+		t.Fatalf("order = %v (requests %#v)", names, tree.Requests)
+	}
+}

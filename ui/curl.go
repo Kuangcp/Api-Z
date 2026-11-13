@@ -25,12 +25,12 @@ func (r *Root) importCurlFromClipboard(c *ui.Context) {
 		c.Toast("剪贴板为空")
 		return
 	}
-	collectionID, folderID, label, ok := r.selectedDirectoryCurlTarget()
+	collectionID, folderID, afterID, label, ok := r.selectedCurlTarget()
 	if !ok {
 		c.Toast("请先创建集合")
 		return
 	}
-	id, err := r.createCurlRequest(collectionID, folderID, text)
+	id, err := r.createCurlRequestAt(collectionID, folderID, afterID, text)
 	if err != nil {
 		c.Toast("导入 cURL 失败: " + err.Error())
 		r.err = "导入 cURL 失败: " + err.Error()
@@ -40,6 +40,35 @@ func (r *Root) importCurlFromClipboard(c *ui.Context) {
 	r.status = "已从剪贴板创建请求 → " + label
 	r.err = ""
 	c.Toast("已从剪贴板创建请求")
+}
+
+// selectedCurlTarget honors a selected request by inserting the new
+// request right below it; otherwise it uses a selected collection/folder or
+// the active collection root.
+func (r *Root) selectedCurlTarget() (collectionID, folderID, afterID, label string, ok bool) {
+	if req, found := r.tree.Request(r.selected); found {
+		label = req.Name + " 下方"
+		return req.CollectionID, req.FolderID, req.ID, label, true
+	}
+	collectionID, folderID, label, ok = r.selectedDirectoryCurlTarget()
+	return collectionID, folderID, "", label, ok
+}
+
+func (r *Root) createCurlRequestAt(collectionID, folderID, afterID, text string) (string, error) {
+	if afterID != "" {
+		beforeID := r.nextSiblingID(app.NodeRequest, collectionID, folderID, afterID)
+		id, err := r.createCurlRequest(collectionID, folderID, text)
+		if err != nil {
+			return "", err
+		}
+		if err := r.store.MoveNodeBefore(app.NodeRequest, id, collectionID, folderID, beforeID); err != nil {
+			return "", err
+		}
+		r.reloadTree()
+		r.selected = id
+		return id, nil
+	}
+	return r.createCurlRequest(collectionID, folderID, text)
 }
 
 // importCurlAt creates a request under an explicit collection or folder,
