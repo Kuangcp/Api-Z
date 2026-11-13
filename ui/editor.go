@@ -278,7 +278,7 @@ func (ed *Editor) authPane(c *ui.Context) {
 	types := []string{"inherit", "noauth", "bearer", "basic", "apikey"}
 	ui.Column(c).Fill().Padding(12).Gap(8).Children(func() {
 		ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, "认证类型").Width(80).TextColor(t.TextMuted)
+			ui.Text(c, "认证类型").Width(140).TextColor(t.TextMuted)
 			if ui.Select(c, &ed.Auth.Type, types).Width(180).Changed() {
 				ed.Dirty = true
 			}

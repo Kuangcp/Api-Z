@@ -8,6 +8,8 @@ import (
 	"api-z/app"
 )
 
+const nodeSettingsLabelWidth float32 = 140
+
 // openNodeSettings starts editing a collection or folder's auth and, for a
 // collection, its OpenAPI binding.
 func (r *Root) openNodeSettings(kind, id string) {
@@ -97,7 +99,7 @@ func (r *Root) nodeAuthEditor(c *ui.Context, t *ui.Theme) {
 	ui.Column(c).Gap(8).Children(func() {
 		types := []string{"inherit", "noauth", "bearer", "basic", "apikey"}
 		ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, "认证类型").Width(80).TextColor(t.TextMuted)
+			ui.Text(c, "认证类型").Width(nodeSettingsLabelWidth).TextColor(t.TextMuted)
 			if ui.Select(c, &r.nodeSettingsAuth.Type, types).Label("认证类型").Width(220).Changed() {
 				r.nodeSettingsAuth = normalizeAuth(r.nodeSettingsAuth)
 			}
@@ -131,7 +133,7 @@ func (r *Root) nodeAuthEditor(c *ui.Context, t *ui.Theme) {
 				in = "header"
 			}
 			ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
-				ui.Text(c, "添加到").Width(140).TextColor(t.TextMuted)
+				ui.Text(c, "添加到").Width(nodeSettingsLabelWidth).TextColor(t.TextMuted)
 				if ui.Select(c, &in, []string{"header", "query"}).Label("API Key 位置").Width(160).Changed() {
 					setAuthValue(&r.nodeSettingsAuth.APIKey, "in", in)
 				}
@@ -254,7 +256,7 @@ func authFieldInput(c *ui.Context, label, key string, list *[]app.AuthProperty, 
 	t := c.Theme()
 	val := authValue(*list, key)
 	ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, label).Width(140).TextColor(t.TextMuted)
+		ui.Text(c, label).Width(nodeSettingsLabelWidth).TextColor(t.TextMuted)
 		input := ui.TextInput(c, &val).Grow(1)
 		if secret {
 			input = input.Password()
