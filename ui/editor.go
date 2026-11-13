@@ -245,7 +245,7 @@ func (ed *Editor) requestHeader(c *ui.Context) {
 	methods := []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
 	ui.Row(c).Padding(6, 8).Gap(6).AlignItems(ui.Center).Children(func() {
 		methodSel := ui.SelectBase(c, &ed.Method)
-		methodSel.Trigger.Label("方法").Width(82).Padding(2, 6).Radius(4).Justify(ui.Start)
+		methodSel.Trigger.Label("方法").Padding(2, 4).Radius(4).Justify(ui.Start)
 		if methodSel.Trigger.Hovered() {
 			methodSel.Trigger.Background(t.SurfaceHover)
 		}
@@ -269,7 +269,7 @@ func (ed *Editor) requestHeader(c *ui.Context) {
 		if methodSel.Trigger.Changed() {
 			ed.Dirty = true
 		}
-		url := ui.TextInput(c, &ed.URL).Placeholder("https://{{host}}/api").Grow(1)
+		url := ed.root.urlInput(c, &ed.URL)
 		urlChanged := url.Changed()
 		if urlChanged {
 			ed.Dirty = true

@@ -124,6 +124,7 @@ api-z 的存在理由就是这条链路。**不要退回全量字符串 + 每帧
 - 集合/文件夹设置走 `ui/node_settings.go` + `Store.UpdateNodeMeta`：Auth 用 `app.MergeAuth`，OpenAPI 绑定用 `app.SetCollectionOpenAPI`（保留 auth/color 等其它 meta）；设置弹窗不要直接改数据库。
 - 左侧集合 Tab 由 `ui/collection_tabs.go` 管理：`Root.activeCollection` / `colMRU`，树只渲染当前集合；Tab 放不下时保留最近使用项，其余进「更多集合」下拉。新增集合/导入/OpenAPI 刷新/打开其他集合的请求后必须调用 `activateCollection`。
 - 多标签最近切换用 `Root.mru`（`Ctrl+Tab` 在最近两个之间切换）；全局搜索用 `Ctrl+K`。
+- URL 输入用 `ui/url_input.go` 在 `{{var}}` 下绘制主题强调色底纹；仅在文本未超出输入框时绘制，避免横向滚动错位。
 - 变量补全：URL/Headers/Params 用 `ui.Popover` + `Element.TextSelection/SetTextSelection`；Body 用 `editor.OnCompletion`。插入格式统一 `{{key}}`，不要在每个输入框里各写一套。
 - 字体：`theme.json` 的 `treeFont/treeFontSize` 只作用于左侧请求树；`bodyFont/bodyFontSize` 作用于请求 Body 编辑器、响应 Raw/Model、JSON/事件编辑器；空字体/0 字号走默认。
 - 主题/字体/缩放/快捷键：持久化到 `<config>/theme.json` / `keymap.json`；`theme.json` 含 `mode`/`accent`/`font`/`scale`（百分比），字体用 draft 字段避免逐键 trim，缩放走 `Context.SetZoom`；动作表在 `ui/keymap.go`，不要在 View 里散写 `c.Shortcut`。录制用 `detectChord`（`Context.KeyDown` + `Modifiers`），冲突时删除旧绑定。
@@ -149,6 +150,7 @@ api-z 的存在理由就是这条链路。**不要退回全量字符串 + 每帧
 - Postman：`TestPostmanImportExport`（字段/auth/禁用项/回导）与 `TestPostmanImportExportUI`（文件导入/导出）。
 - 环境：`TestEnvironmentManager`（新增/变量/保存）与 `TestEnvironmentManagerDeleteActive`（删除当前环境）。
 - 移动：`TestStoreMoveNodeTo`（跨集合/子树更新/环检测）、`TestStoreMoveNodeBefore`（插入排序）、`TestMoveRequestToFolderUI` / `TestMoveFolderHidesSubtreeUI` / `TestDragRequestIntoFolderUI`。
+- URL 输入用 `ui/url_input.go` 在 `{{var}}` 下绘制主题强调色底纹；仅在文本未超出输入框时绘制，避免横向滚动错位。
 - 变量补全：`TestFindVarPrefixInsert`（前后缀/光标）、`TestVariableAutocompleteUI` / `TestVariableAutocompleteTextArea`（弹出/点击插入）、`TestVariableAutocompleteBodyEditor`（编辑器 completion）。
 - 设置：`TestChordParseFormat`、`TestResolveTheme`、`TestSettingsThemeAndKeymap`、`TestThemeResetsToSystem`。
 - OpenAPI：`TestParseOpenAPI`、`TestNormalizeOpenAPIPath`、`TestMergeOpenAPIPreservesLocalEdits`、`TestRefreshOpenAPICollection`、`TestOpenAPIImportAndRefreshUI`、`TestOpenAPIImportDialog`。
