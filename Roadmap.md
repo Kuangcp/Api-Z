@@ -289,6 +289,7 @@ go run . -migrate -api-x-home ~/.local/share/api-x -data-dir /tmp/api-z-smoke
 - [x] P4 OpenAPI、data/ Push/Pull、curl/代码片段、api-x HAR 历史读取
 - [ ] P5 MCP（SSE / streamable HTTP / stdio）
 - [x] P6 第一批：响应三页签/请求快照/二进制保存打开/自动保存
+- [x] P6 第二批（部分）：SSE 事件 JSON 面板可拖动高度；Headers 页签同时展示请求/响应头并写入 HAR
 - [x] P6 第三批（部分）：集合/文件夹 Auth 与 OpenAPI 绑定设置
 - [x] P6 第二批（部分）：SSE Raw 时间戳与事件 JSON 详情
 - [x] P6 第四批（部分）：环境选择器语义色与手动颜色配置

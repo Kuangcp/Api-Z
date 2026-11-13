@@ -41,7 +41,8 @@ func TestResponseTabsAndBinaryCard(t *testing.T) {
 
 	ed.RespTab = 1
 	tt.Frame()
-	if !tt.HasText("X-Test") || !tt.HasText("yes") {
+	if !tt.HasText("X-Test") || !tt.HasText("yes") ||
+		!tt.HasText("请求头") || !tt.HasText("X-Input") || !tt.HasText("响应头") {
 		t.Fatalf("headers tab = %v", tt.Texts())
 	}
 

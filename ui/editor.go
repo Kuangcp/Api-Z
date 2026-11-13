@@ -46,6 +46,7 @@ type Editor struct {
 	md          markdown.Options
 
 	SelectedEvent int
+	EventSplit    float32
 	eventIdx      int
 	eventEd       *editor.State
 	agui          httpclient.AguiSnapshot
@@ -97,6 +98,7 @@ func NewEditor(root *Root, req app.Request) *Editor {
 		Auth:          app.ParseAuth(req.MetaJSON),
 		md:            markdown.Options{},
 		SelectedEvent: -1,
+		EventSplit:    70,
 		eventIdx:      -1,
 	}
 	ed.paramsKV.Mode = 1

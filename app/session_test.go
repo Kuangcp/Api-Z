@@ -102,6 +102,14 @@ func TestSessionStreamsSSE(t *testing.T) {
 	if exchanges[0].EventCount != n+4 || exchanges[0].Status != 200 {
 		t.Fatalf("exchange = %#v", exchanges[0])
 	}
+	full, err := ReadHARResponse(exchanges[0].HARPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reqHeader := strings.Join(full.RequestHeaders, "\n")
+	if full.RequestMethod != "GET" || !strings.Contains(reqHeader, "Accept: text/event-stream") {
+		t.Fatalf("HAR request = %s %q", full.RequestMethod, reqHeader)
+	}
 }
 
 func TestSessionCancelDoesNotSave(t *testing.T) {

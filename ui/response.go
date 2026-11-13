@@ -47,7 +47,12 @@ func (ed *Editor) responsePane(c *ui.Context) {
 		ed.responseTabs(c, sess, snap)
 		switch ed.RespTab {
 		case 1:
-			ed.responseHeaders(c, snap.Headers)
+			spec, sent := sess.Spec()
+			var requestHeaders []string
+			if sent {
+				requestHeaders = requestHeaderLines(spec)
+			}
+			ed.responseHeaders(c, requestHeaders, snap.Headers)
 			return
 		case 2:
 			ed.responseRequest(c, sess)
@@ -230,7 +235,7 @@ func (ed *Editor) historyPane(c *ui.Context) {
 			}
 		})
 		if ed.RespTab == 1 {
-			ed.responseHeaders(c, resp.Headers)
+			ed.responseHeaders(c, resp.RequestHeaders, resp.Headers)
 			return
 		}
 		if ed.RespTab == 2 {
@@ -285,51 +290,57 @@ func (ed *Editor) rawView(c *ui.Context, sess *app.Session, snap app.SessionSnap
 	}
 	ed.RawList.FollowEnd = snap.Running
 	ui.Column(c).Fill().Children(func() {
-		ui.List(c, &ed.RawList, n, func(i int) {
-			line := sess.Line(i)
-			if line == "" {
-				line = " "
-			}
-			event := -1
-			if snap.IsSSE {
-				event = sess.LineEvent(i)
-			}
-			if event >= 0 {
-				selected := event == ed.SelectedEvent
-				btn := ui.ButtonBase(c).Label("SSE 事件行").Justify(ui.Start).Padding(0, 2).Radius(3)
-				if selected {
-					btn.Background(t.Accent.Alpha(0.18))
-				} else if btn.Hovered() {
-					btn.Background(t.SurfaceHover)
+		list := func() {
+			ui.List(c, &ed.RawList, n, func(i int) {
+				line := sess.Line(i)
+				if line == "" {
+					line = " "
 				}
-				btn.Children(func() {
-					ed.sseLine(c, line)
-				})
-				if btn.Clicked() {
-					if ed.SelectedEvent == event {
-						ed.SelectedEvent = -1
-						ed.eventIdx = -1
-						ed.eventEd = nil
-					} else {
-						ed.SelectedEvent = event
-						ed.eventIdx = -1
-						ed.eventEd = nil
+				event := -1
+				if snap.IsSSE {
+					event = sess.LineEvent(i)
+				}
+				if event >= 0 {
+					selected := event == ed.SelectedEvent
+					btn := ui.ButtonBase(c).Label("SSE 事件行").Justify(ui.Start).Padding(0, 2).Radius(3)
+					if selected {
+						btn.Background(t.Accent.Alpha(0.18))
+					} else if btn.Hovered() {
+						btn.Background(t.SurfaceHover)
 					}
+					btn.Children(func() {
+						ed.sseLine(c, line)
+					})
+					if btn.Clicked() {
+						if ed.SelectedEvent == event {
+							ed.SelectedEvent = -1
+							ed.eventIdx = -1
+							ed.eventEd = nil
+						} else {
+							ed.SelectedEvent = event
+							ed.eventIdx = -1
+							ed.eventEd = nil
+						}
+					}
+					return
 				}
-				return
-			}
-			ui.Text(c, clipLine(line, 4096)).Font("monospace").FontSize(12).SingleLine()
-		}).Grow(1).Children(func() {
-			if n == 0 {
-				msg := "等待响应…"
-				if snap.Done {
-					msg = "响应为空"
+				ui.Text(c, clipLine(line, 4096)).Font("monospace").FontSize(12).SingleLine()
+			}).Grow(1).Children(func() {
+				if n == 0 {
+					msg := "等待响应…"
+					if snap.Done {
+						msg = "响应为空"
+					}
+					ui.Text(c, msg).Padding(12).TextColor(t.TextMuted)
 				}
-				ui.Text(c, msg).Padding(12).TextColor(t.TextMuted)
-			}
-		})
+			})
+		}
 		if snap.IsSSE && ed.SelectedEvent >= 0 && ed.eventEd != nil {
-			ed.sseEventPanel(c, sess, snap)
+			ui.SplitVerticalPercent(c, &ed.EventSplit, list, func() {
+				ed.sseEventPanel(c, sess, snap)
+			}).Grow(1)
+		} else {
+			list()
 		}
 	})
 }
@@ -413,7 +424,7 @@ func (ed *Editor) sseEventPanel(c *ui.Context, sess *app.Session, snap app.Sessi
 	if !ok {
 		return
 	}
-	ui.Column(c).Height(220).BorderWidth(1, 0, 0, 0).BorderColor(t.Border).Children(func() {
+	ui.Column(c).Fill().BorderWidth(1, 0, 0, 0).BorderColor(t.Border).Children(func() {
 		ui.Row(c).Padding(4, 8).Gap(8).AlignItems(ui.Center).Children(func() {
 			ui.Text(c, fmt.Sprintf("Event #%d", ed.SelectedEvent+1)).FontSize(11.5).Bold()
 			if !ev.At.IsZero() {
