@@ -420,6 +420,11 @@ func (ed *Editor) ensureEventEditor(sess *app.Session, idx int) {
 
 func (ed *Editor) sseEventPanel(c *ui.Context, sess *app.Session, snap app.SessionSnapshot) {
 	t := c.Theme()
+	// A click on another event row during the split's first pane rebuild
+	// clears eventEd before the second pane is built.
+	if ed.eventEd == nil {
+		return
+	}
 	ev, ok := sess.Event(ed.SelectedEvent)
 	if !ok {
 		return
