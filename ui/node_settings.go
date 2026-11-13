@@ -64,20 +64,20 @@ func (r *Root) nodeSettingsModal(c *ui.Context) {
 	}
 	ui.Modal(c, &r.nodeSettingsOpen, func() {
 		ui.Text(c, title).FontSize(15).Bold()
-		ui.Row(c).Gap(16).Children(func() {
-			ui.Column(c).Width(150).Children(func() {
-				r.nodeSettingsNav(c, "认证 (Auth)", 0)
-				if isCollection {
-					r.nodeSettingsNav(c, "OpenAPI", 1)
-				}
-			})
-			ui.Column(c).Grow(1).Children(func() {
-				if r.nodeSettingsSection == 0 {
-					r.nodeAuthEditor(c, t)
-				} else if isCollection {
-					r.nodeOpenAPIEditor(c, t)
-				}
-			})
+		labels := []string{"认证 (Auth)"}
+		if isCollection {
+			labels = append(labels, "OpenAPI")
+		}
+		if r.nodeSettingsSection >= len(labels) {
+			r.nodeSettingsSection = 0
+		}
+		ui.Tabs(c, &r.nodeSettingsSection, labels...)
+		ui.Column(c).Grow(1).Padding(4).Children(func() {
+			if r.nodeSettingsSection == 0 {
+				r.nodeAuthEditor(c, t)
+			} else if isCollection {
+				r.nodeOpenAPIEditor(c, t)
+			}
 		})
 		if r.nodeSettingsErr != "" {
 			ui.Text(c, r.nodeSettingsErr).FontSize(12).TextColor(t.Danger)
@@ -90,23 +90,7 @@ func (r *Root) nodeSettingsModal(c *ui.Context) {
 				r.saveNodeSettings()
 			}
 		})
-	}).Width(760).Height(560)
-}
-
-func (r *Root) nodeSettingsNav(c *ui.Context, label string, section int) {
-	t := c.Theme()
-	btn := ui.ButtonBase(c).Label(label).Justify(ui.Start).Padding(8, 12).Radius(5).FillWidth()
-	if r.nodeSettingsSection == section {
-		btn.Background(t.Accent.Alpha(0.16))
-	} else if btn.Hovered() {
-		btn.Background(t.SurfaceHover)
-	}
-	btn.Children(func() {
-		ui.Text(c, label).FontSize(12.5).SingleLine()
-	})
-	if btn.Clicked() {
-		r.nodeSettingsSection = section
-	}
+	}).Width(760).Height(520)
 }
 
 func (r *Root) nodeAuthEditor(c *ui.Context, t *ui.Theme) {
