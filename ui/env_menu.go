@@ -9,6 +9,33 @@ import (
 	"api-z/app"
 )
 
+var envColorPresets = []struct{ label, hex string }{
+	{"自动", ""},
+	{"蓝", "#3b82f6"},
+	{"绿", "#22c55e"},
+	{"红", "#ef4444"},
+	{"橙", "#f59e0b"},
+	{"紫", "#a855f7"},
+}
+
+const envInfoColorHex = "#3b82f6"
+
+func envTextColor(c *ui.Context, env app.Environment) ui.Color {
+	t := c.Theme()
+	if app.ValidHex(env.Color) {
+		return ui.Hex(env.Color)
+	}
+	switch app.EnvironmentColorHint(env.Name, env.Tag) {
+	case "red":
+		return t.Danger
+	case "green":
+		return t.Success
+	case "blue":
+		return ui.Hex(envInfoColorHex)
+	}
+	return t.Text
+}
+
 type envGroup struct {
 	Tag  string
 	Envs []app.Environment
@@ -121,12 +148,14 @@ func envMenuColumnWidth(envs []app.Environment, tag string) float32 {
 func (r *Root) envMenu(c *ui.Context) {
 	t := c.Theme()
 	tag, name := "", "无环境"
+	nameColor := t.Text
 	if active := r.env.Active(); active != nil {
 		tag = strings.TrimSpace(active.Tag)
 		name = envNameWithoutTag(active.Name, tag)
 		if name == "" {
 			name = "无环境"
 		}
+		nameColor = envTextColor(c, *active)
 	}
 	anchor := ui.ButtonBase(c).Label("切换环境").Justify(ui.Start).
 		Padding(3, 8).Radius(6)
@@ -138,7 +167,7 @@ func (r *Root) envMenu(c *ui.Context) {
 			ui.Text(c, tag).FontSize(11).TextColor(t.TextMuted).SingleLine().MaxWidth(90)
 			ui.Text(c, "|").FontSize(11).TextColor(t.TextMuted)
 		}
-		ui.Text(c, name).FontSize(11.5).SingleLine().MaxWidth(150)
+		ui.Text(c, name).FontSize(11.5).SingleLine().MaxWidth(150).TextColor(nameColor)
 		ui.Box(c).Width(4)
 		ui.Text(c, "▾").FontSize(9).TextColor(t.TextMuted)
 	})
@@ -230,7 +259,8 @@ func (r *Root) envMenu(c *ui.Context) {
 											} else {
 												ui.Box(c).Width(16)
 											}
-											ui.Text(c, label).FontSize(13.5).SingleLine()
+											ui.Text(c, label).FontSize(13.5).SingleLine().
+												TextColor(envTextColor(c, env))
 										})
 										if btn.Clicked() {
 											r.activateEnvID(env.ID)

@@ -170,3 +170,30 @@ func TestEnvCascadeMenu(t *testing.T) {
 		t.Fatalf("no env: active=%q open=%v", root.env.ActiveEnvironmentID, root.envMenuOpen)
 	}
 }
+
+func TestEnvironmentColorPersists(t *testing.T) {
+	paths := app.PathsAt(t.TempDir(), t.TempDir())
+	if err := paths.Ensure(); err != nil {
+		t.Fatal(err)
+	}
+	store, _ := app.OpenStore(paths.DBPath)
+	defer store.Close()
+	env := app.EnvState{Version: 1, ActiveEnvironmentID: "e1", Environments: []app.Environment{
+		{ID: "e1", Name: "Local", Tag: "Local"},
+	}}
+	_ = store.SaveEnvironments(env)
+	root := NewRoot(paths, store, app.Tree{}, env)
+	root.openEnvManager()
+	root.envDraft.Environments[0].Color = "#22c55e"
+	root.saveEnvManager()
+	saved, _ := store.LoadEnvironments()
+	if saved.Environments[0].Color != "#22c55e" {
+		t.Fatalf("saved color = %q", saved.Environments[0].Color)
+	}
+	root.openEnvManager()
+	root.envDraft.Environments[0].Color = "green"
+	root.saveEnvManager()
+	if root.envErr == "" {
+		t.Fatal("invalid color accepted")
+	}
+}

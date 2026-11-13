@@ -166,7 +166,32 @@ type Environment struct {
 	ID        string        `json:"id"`
 	Name      string        `json:"name"`
 	Tag       string        `json:"tag,omitempty"`
+	Color     string        `json:"color,omitempty"`
 	Variables []EnvVariable `json:"variables"`
+}
+
+// EnvironmentColorHint infers a semantic color from the environment name or
+// tag: production red, test green, local/dev blue. Empty means no auto color.
+func EnvironmentColorHint(name, tag string) string {
+	label := strings.ToLower(strings.TrimSpace(name) + " " + strings.TrimSpace(tag))
+	switch {
+	case containsAny(label, "prod", "production", "生产", "线上"):
+		return "red"
+	case containsAny(label, "test", "testing", "staging", "stage", "uat", "测试"):
+		return "green"
+	case containsAny(label, "local", "localhost", "本地", "dev", "开发"):
+		return "blue"
+	}
+	return ""
+}
+
+func containsAny(s string, needles ...string) bool {
+	for _, needle := range needles {
+		if strings.Contains(s, needle) {
+			return true
+		}
+	}
+	return false
 }
 
 type EnvVariable struct {
@@ -273,6 +298,10 @@ func (s EnvState) Clean() EnvState {
 			e.Name = "未命名环境"
 		}
 		e.Tag = strings.TrimSpace(e.Tag)
+		e.Color = strings.TrimSpace(e.Color)
+		if e.Color != "" && !ValidHex(e.Color) {
+			e.Color = ""
+		}
 		vars := e.Variables[:0]
 		for _, v := range e.Variables {
 			v.Key = strings.TrimSpace(v.Key)

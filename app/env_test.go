@@ -13,3 +13,26 @@ func TestEnvEnsureTags(t *testing.T) {
 		t.Fatalf("tags = %#v", got.Environments)
 	}
 }
+
+func TestEnvironmentColorHintAndClean(t *testing.T) {
+	cases := []struct{ name, tag, want string }{
+		{"工作流 - Production", "", "red"},
+		{"HCCM - Test", "", "green"},
+		{"文献 - Local", "", "blue"},
+		{"本地开发", "", "blue"},
+		{"Dev", "开发", "blue"},
+		{"Staging", "", "green"},
+		{"", "生产", "red"},
+		{"Docs", "", ""},
+	}
+	for _, tc := range cases {
+		if got := EnvironmentColorHint(tc.name, tc.tag); got != tc.want {
+			t.Fatalf("hint(%q,%q) = %q, want %q", tc.name, tc.tag, got, tc.want)
+		}
+	}
+	st := EnvState{Environments: []Environment{{ID: "e", Name: "Local", Color: "#22c55e"}, {ID: "x", Name: "Bad", Color: "red"}}}
+	clean := st.Clean()
+	if clean.Environments[0].Color != "#22c55e" || clean.Environments[1].Color != "" {
+		t.Fatalf("clean colors = %#v", clean.Environments)
+	}
+}

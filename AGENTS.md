@@ -84,6 +84,7 @@ api-z 的存在理由就是这条链路。**不要退回全量字符串 + 每帧
 - `headers_text`：一行 `Name: Value`；`! ` 前缀表示只编辑不发送。
 - `params_text`：一行 `key: value`；发送时编码并拼到 URL（空格为 `+`，与 api-x 一致）。
 - 环境替换：`{{name}}`，最多 32 轮（支持值里再含变量）；未知变量保留原文。
+- 环境颜色：`Environment.Color` 持久化在 environments.json；空值由 `app.EnvironmentColorHint` 按名称/tag 推断（prod 红、test 绿、local/dev 蓝），UI 用 `envTextColor` 映射到主题色。环境管理器颜色只改 draft，按「保存环境」落盘。
 - Auth 继承：request → 父 folder → collection，第一个非 `inherit` 生效（`app.Tree.EffectiveAuth`）。
 - 传输层禁止 header：`Content-Length`/`Transfer-Encoding`/`Connection`/`Upgrade`/`Expect`；`Host` 单独设置。
 - 超时：当前请求总超时 120s；后续设置页可配。

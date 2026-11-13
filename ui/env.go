@@ -139,6 +139,32 @@ func (r *Root) envEditor(c *ui.Context, t *ui.Theme) {
 			r.envDraft.ActiveEnvironmentID = env.ID
 		}
 	})
+	ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+		ui.Text(c, "颜色").Width(56).TextColor(t.TextMuted)
+		for _, preset := range envColorPresets {
+			preset := preset
+			btn := ui.ButtonBase(c).Label(preset.label).Padding(3, 8).Radius(5)
+			if env.Color == preset.hex {
+				btn.Background(t.Accent.Alpha(0.16))
+			} else if btn.Hovered() {
+				btn.Background(t.SurfaceHover)
+			}
+			btn.Children(func() {
+				col := t.Text
+				if preset.hex != "" {
+					col = ui.Hex(preset.hex)
+				}
+				ui.Text(c, preset.label).FontSize(11.5).TextColor(col)
+			})
+			if btn.Clicked() {
+				env.Color = preset.hex
+			}
+		}
+		ui.Spacer(c)
+		ui.TextInput(c, &env.Color).Placeholder("#rrggbb（留空自动）").Width(160)
+	})
+	ui.Text(c, "颜色用于环境选择器；留空时按名称自动标记（local / test / prod）。").
+		FontSize(10.5).TextColor(t.TextMuted)
 	ui.Text(c, "变量：在请求中用 {{key}} 引用").FontSize(10.5).TextColor(t.TextMuted)
 	ui.Row(c).Children(func() {
 		ui.Text(c, "Key").FontSize(11).TextColor(t.TextMuted).Width(200)
@@ -186,6 +212,12 @@ func (r *Root) deleteEnv() {
 }
 
 func (r *Root) saveEnvManager() {
+	for _, env := range r.envDraft.Environments {
+		if env.Color != "" && !app.ValidHex(env.Color) {
+			r.envErr = "环境颜色必须是 #rrggbb，或留空自动"
+			return
+		}
+	}
 	cleaned := r.envDraft.Clean()
 	if err := r.store.SaveEnvironments(cleaned); err != nil {
 		r.envErr = "保存失败: " + err.Error()

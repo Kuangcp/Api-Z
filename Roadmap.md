@@ -225,7 +225,7 @@ api-z 使用自己的数据目录与 SQLite（WAL）：
 - 响应历史自动载入最新 HAR、「最新」项、清空响应/日志；HAR 记录请求快照与右侧页签。
 - Tab 右键关闭其他/全部、单行/多行布局；最近请求浮层（最多 30，Tab/Shift+Tab）。
 - 树：双击重命名、工具栏新建/重命名/删除、集合拖拽排序、展开状态持久化。
-- 环境管理器拖拽排序、选择器 prod/test/local 语义色。
+- 环境管理器拖拽排序（待补）、选择器 prod/test/local 语义色（已完成，支持手动覆盖）。
 - 快捷键补齐：`Ctrl+B`、`Ctrl+F`、`Esc`、`Ctrl+D`。
 - Headers 常见键补全；Go 代码导出。
 
@@ -291,6 +291,7 @@ go run . -migrate -api-x-home ~/.local/share/api-x -data-dir /tmp/api-z-smoke
 - [x] P6 第一批：响应三页签/请求快照/二进制保存打开/自动保存
 - [x] P6 第三批（部分）：集合/文件夹 Auth 与 OpenAPI 绑定设置
 - [x] P6 第二批（部分）：SSE Raw 时间戳与事件 JSON 详情
+- [x] P6 第四批（部分）：环境选择器语义色与手动颜色配置
 
 ### 已实测
 
