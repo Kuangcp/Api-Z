@@ -100,6 +100,7 @@ type Session struct {
 
 	lastNotify time.Time
 	doneCh     chan struct{}
+	doneOnce   sync.Once
 	exchangeID string
 	harPath    string
 }
@@ -163,6 +164,7 @@ func (s *Session) Start(spec httpclient.Spec) {
 	s.agui = httpclient.NewAguiState()
 	s.model = &httpclient.ModelState{}
 	s.doneCh = make(chan struct{})
+	s.doneOnce = sync.Once{}
 	s.exchangeID = s.id + "-" + fmt.Sprintf("%d", now.UnixMilli())
 	harStem := fmt.Sprintf("%d", now.UnixMilli())
 	s.harPath = filepath.Join(s.paths.ResponseDir(s.id), harStem+".har")
@@ -178,7 +180,7 @@ func (s *Session) Start(spec httpclient.Spec) {
 		s.running = false
 		s.done = true
 		s.finished = now
-		close(s.doneCh)
+		s.doneOnce.Do(func() { close(s.doneCh) })
 		fn := s.notify
 		s.mu.Unlock()
 		if fn != nil {
@@ -198,7 +200,15 @@ func (s *Session) Start(spec httpclient.Spec) {
 	}
 	s.mu.Unlock()
 
+	LogInfo("exec", "request start", "method", spec.Method, "url", RedactURL(spec.URL),
+		"headers", len(spec.Headers), "body_bytes", len(spec.Body))
 	go func() {
+		defer func() {
+			if rec := recover(); rec != nil {
+				LogPanic("exec", "request goroutine panic", rec)
+				s.finishPanic(fmt.Sprintf("panic: %v", rec))
+			}
+		}()
 		s.client.Execute(ctx, spec, &sessionHandler{s: s})
 	}()
 }
@@ -476,6 +486,15 @@ func (h *sessionHandler) OnDone(err error) {
 	exchangeID := s.exchangeID
 	s.mu.Unlock()
 
+	if errMsg != "" && !canceled {
+		LogWarn("exec", "request failed", "method", spec.Method, "url", RedactURL(spec.URL),
+			"status", status, "duration_ms", duration, "err", redactText(errMsg, spec.URL))
+	} else {
+		LogInfo("exec", "request done", "method", spec.Method, "url", RedactURL(spec.URL),
+			"status", status, "duration_ms", duration, "bytes", bytes, "sse", isSSE,
+			"events", events, "cancelled", canceled)
+	}
+
 	// Save the exchange and HAR outside the lock; they touch disk.
 	if errMsg == "" && !canceled {
 		if err := WriteHAR(harPath, HARInput{
@@ -510,7 +529,33 @@ func (h *sessionHandler) OnDone(err error) {
 		}
 	}
 	h.s.notifyNow()
-	close(s.doneCh)
+	s.doneOnce.Do(func() { close(s.doneCh) })
+}
+
+// finishPanic finalizes a request whose goroutine panicked. It is defensive:
+// a second call after OnDone is a no-op.
+func (s *Session) finishPanic(msg string) {
+	s.mu.Lock()
+	if !s.done {
+		s.errMsg = msg
+		s.running = false
+		s.done = true
+		s.finished = time.Now()
+	}
+	if s.cancel != nil {
+		s.cancel()
+		s.cancel = nil
+	}
+	if s.spool != nil {
+		_ = s.spool.Close()
+		s.spool = nil
+	}
+	ch := s.doneCh
+	s.mu.Unlock()
+	s.notifyNow()
+	if ch != nil {
+		s.doneOnce.Do(func() { close(ch) })
+	}
 }
 
 func (h *sessionHandler) headerSnapshot() []string {

@@ -99,7 +99,9 @@ func main() {
 
 	root := ui.NewRoot(paths, store, tree, env)
 	root.SetAppIconPNG(appIconPNG)
+	uiPanic := false
 	mygo.App.WhenReady(func() {
+		defer app.RecoverPanic("startup")
 		win := mygo.NewWindow(mygo.WindowOptions{
 			Title:           "Api-Z",
 			Width:           1440,
@@ -110,7 +112,19 @@ func main() {
 			Frameless:       true,
 			CornerRadius:    ui.WindowCornerRadius(themePrefs),
 			BackgroundColor: ui.WindowBackgroundColor(themePrefs),
-			Content:         mygoui.View(root.View),
+			Content: mygoui.View(func(c *mygoui.Context) {
+				if uiPanic {
+					mygoui.Text(c, "界面渲染异常，请查看日志文件后重启应用。").Padding(24)
+					return
+				}
+				defer func() {
+					if rec := recover(); rec != nil {
+						uiPanic = true
+						app.LogPanic("ui", "view panic", rec)
+					}
+				}()
+				root.View(c)
+			}),
 		})
 		if err := win.SetIcon(appIconPNG); err != nil {
 			app.LogWarn("startup", "set window icon failed", "err", err.Error())

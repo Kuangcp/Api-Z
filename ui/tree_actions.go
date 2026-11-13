@@ -370,7 +370,7 @@ func (r *Root) importPostmanDialog() {
 		return
 	}
 	win := r.win
-	go func() {
+	app.SafeGo("ui", func() {
 		paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{
 			Parent:  win,
 			Title:   "导入 Postman Collection",
@@ -402,7 +402,7 @@ func (r *Root) importPostmanDialog() {
 			r.status = "已导入集合「" + portable.Name + "」"
 			r.err = ""
 		})
-	}()
+	})
 }
 
 func (r *Root) exportPostmanFile(collectionID, path string) error {
@@ -422,7 +422,7 @@ func (r *Root) exportPostmanDialog(collectionID, name string) {
 		return
 	}
 	win := r.win
-	go func() {
+	app.SafeGo("ui", func() {
 		portable, err := r.store.ExportPortableCollection(collectionID)
 		if err != nil {
 			win.Update(func() { r.err = "导出失败: " + err.Error() })
@@ -453,7 +453,7 @@ func (r *Root) exportPostmanDialog(collectionID, name string) {
 			r.status = "已导出: " + path
 			r.err = ""
 		})
-	}()
+	})
 }
 
 func safeFileName(s string) string {

@@ -59,6 +59,7 @@ go run . -migrate \
 - 设置：主题（跟随系统/浅色/深色 + 默认/海洋/森林/暖阳配色 + 圆角 + 强调色）、界面字体与 90–125% 缩放、快捷键可改键（录制、冲突替换、恢复默认），落盘 `theme.json` / `keymap.json`。
 - 图标：设置/新建集合/导入/清空/环境管理等使用 Lucide 图标按钮；应用图标为 `assets/icon.svg` 生成的 Z 图标（256/512 PNG）。
 - 默认快捷键：`Ctrl+Enter` 发送、`Ctrl+S` 保存、`Ctrl+K` 搜索、`Ctrl+Tab` 最近切换、`Ctrl+N` 新建请求、`Ctrl+W` 关闭标签、`Ctrl+,` 设置。
+- 日志：每次请求记录方法、脱敏 URL、状态、耗时、字节数、SSE 事件数；协程/UI panic 带堆栈写入日志，UI 渲染异常显示兜底提示而非直接退出。
 - HAR 落盘与最近 10 次历史回看。
 - api-x 只读识别 + 一次性迁移（SQLite、environments.json、response artifacts）。
 - Postman Collection v2.1 导入/导出：嵌套文件夹、根请求、auth、禁用 Header、raw/urlencoded body、query/params、集合变量与描述；保留 `_api_x_id` 便于回导。

@@ -200,14 +200,14 @@ func (ed *Editor) scheduleAutoSave() {
 			req, gen := ed.snapshotRequest()
 			ed.MetaJSON = req.MetaJSON
 			ed.Dirty = false
-			go func() {
+			app.SafeGo("ui", func() {
 				if err := ed.writeSnapshot(req, gen); err != nil {
 					win.Update(func() {
 						ed.Dirty = true
 						ed.root.err = "自动保存失败: " + err.Error()
 					})
 				}
-			}()
+			})
 		})
 	})
 }

@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -100,4 +101,35 @@ func RedactURL(raw string) string {
 		}
 	}
 	return raw
+}
+
+// RecoverPanic logs a panic caught by a deferred recover. Stack traces are
+// written to the log file so a failed goroutine is diagnosable without
+// taking the whole app down.
+func RecoverPanic(tag string) {
+	if rec := recover(); rec != nil {
+		LogPanic(tag, "recovered panic", rec)
+	}
+}
+
+// LogPanic writes an ERROR entry with the recovered value and stack.
+func LogPanic(tag, msg string, rec any) {
+	stack := strings.TrimSpace(string(debug.Stack()))
+	LogError(tag, msg, "panic", fmt.Sprint(rec), "stack", strings.ReplaceAll(stack, "\n", " | "))
+}
+
+// SafeGo runs fn in a goroutine and logs (without crashing the app) if it
+// panics.
+func SafeGo(tag string, fn func()) {
+	go func() {
+		defer RecoverPanic(tag)
+		fn()
+	}()
+}
+
+func redactText(text, rawURL string) string {
+	if rawURL == "" {
+		return text
+	}
+	return strings.ReplaceAll(text, rawURL, RedactURL(rawURL))
 }

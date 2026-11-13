@@ -156,8 +156,8 @@ api-z 的存在理由就是这条链路。**不要退回全量字符串 + 每帧
 
 - `app.LogInfo/LogWarn/LogError(tag, msg, kv...)`；tag：`startup` `migrate` `har` `conn` `exec` `panic`。
 - URL 入日志前用 `app.RedactURL`；`Authorization`/`Cookie`/密码永不入日志。
-- 日志写入失败不能影响调用方。
-- 崩溃兜底后续加；当前 UI panic 会让窗口退出，不要静默吞异常。
+- 日志写入失败不能影响调用方。每个请求在 `Session.Start` / `OnDone` 记录 method、`RedactURL` 后的 URL、status、duration、bytes、SSE events；panic 用 `app.LogPanic` 记录堆栈。
+- 崩溃兜底：后台 goroutine 用 `app.SafeGo(tag, fn)`；请求 goroutine 捕获 panic 后调用 `finishPanic`；UI View/启动回调 panic 记录到日志并显示兜底提示，不要静默吞异常。
 
 ## 提交与文档
 

@@ -93,7 +93,7 @@ func (r *Root) startOpenAPIImport() {
 		r.openAPIBusy = false
 		return
 	}
-	go func() {
+	app.SafeGo("ui", func() {
 		body, err := app.FetchOpenAPI(context.Background(), source)
 		var id string
 		var stats app.OpenAPIMergeStats
@@ -114,7 +114,7 @@ func (r *Root) startOpenAPIImport() {
 			r.status = fmt.Sprintf("已导入 OpenAPI：%d 个接口 / %d 个文件夹", stats.Added, stats.Folders)
 			r.err = ""
 		})
-	}()
+	})
 }
 
 // importOpenAPIText parses and stores a document without network access, for
@@ -151,10 +151,10 @@ func (r *Root) refreshOpenAPIAsync(collectionID string) {
 		}
 		return
 	}
-	go func() {
+	app.SafeGo("ui", func() {
 		stats, err := r.refreshOpenAPICollection(collectionID)
 		win.Update(func() { r.afterOpenAPIRefresh(collectionID, stats, err) })
-	}()
+	})
 }
 
 func (r *Root) afterOpenAPIRefresh(collectionID string, stats app.OpenAPIMergeStats, err error) {

@@ -13,10 +13,10 @@ func (r *Root) pushDataDir() {
 		return
 	}
 	win := r.win
-	go func() {
+	app.SafeGo("ui", func() {
 		res, err := r.store.PushDataDir(r.paths)
 		win.Update(func() { r.finishPush(res, err) })
-	}()
+	})
 }
 
 func (r *Root) finishPush(res app.DataPushResult, err error) {
@@ -34,10 +34,10 @@ func (r *Root) pullDataDir() {
 		return
 	}
 	win := r.win
-	go func() {
+	app.SafeGo("ui", func() {
 		res, err := r.store.PullDataDir(r.paths)
 		win.Update(func() { r.finishPull(res, err) })
-	}()
+	})
 }
 
 func (r *Root) finishPull(res app.DataPullResult, err error) {

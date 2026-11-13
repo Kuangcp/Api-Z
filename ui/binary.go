@@ -46,7 +46,7 @@ func (ed *Editor) saveBinary(snap app.SessionSnapshot, name string) {
 		ed.root.err = "保存二进制响应失败: 没有窗口"
 		return
 	}
-	go func() {
+	app.SafeGo("ui", func() {
 		path, err := mygo.Dialog.Save(mygo.SaveDialogOptions{
 			Parent:      win,
 			Title:       "保存二进制响应",
@@ -63,7 +63,7 @@ func (ed *Editor) saveBinary(snap app.SessionSnapshot, name string) {
 			ed.root.err = ""
 			ed.root.status = "已保存二进制响应: " + path
 		})
-	}()
+	})
 }
 
 func (ed *Editor) openBinary(snap app.SessionSnapshot, name string) {

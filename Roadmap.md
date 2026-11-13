@@ -293,6 +293,7 @@ go run . -migrate -api-x-home ~/.local/share/api-x -data-dir /tmp/api-z-smoke
 - [x] P6 第三批（部分）：集合/文件夹 Auth 与 OpenAPI 绑定设置
 - [x] P6 第二批（部分）：SSE Raw 时间戳与事件 JSON 详情
 - [x] P6 第四批（部分）：环境选择器语义色与手动颜色配置
+- [x] P6 第五批（部分）：请求日志、goroutine/UI panic 兜底与堆栈记录
 
 ### 已实测
 
