@@ -19,12 +19,14 @@ func TestRecentSwitchAndGlobalSearch(t *testing.T) {
 	}
 	defer store.Close()
 	cid, _ := store.CreateCollection("Demo")
-	a, _ := store.CreateRequest(cid, "", "Alpha")
+	fid, _ := store.CreateFolder(cid, "", "Folder")
+	a, _ := store.CreateRequest(cid, fid, "Alpha")
 	b, _ := store.CreateRequest(cid, "", "Beta")
 	_ = store.SaveRequest(app.Request{ID: a, Name: "Alpha", Method: "GET", URL: "https://example.com/a"})
 	_ = store.SaveRequest(app.Request{ID: b, Name: "Beta", Method: "GET", URL: "https://example.com/b"})
 	tree, _ := store.LoadTree()
 	root := NewRoot(paths, store, tree, app.EnvState{Version: 1})
+	root.expanded["f:"+fid] = true
 	tt := ui.NewTester(root.View, 1200, 800)
 	tt.Frame()
 
@@ -68,5 +70,8 @@ func TestRecentSwitchAndGlobalSearch(t *testing.T) {
 	}
 	if root.tabs[root.active].ID != a {
 		t.Fatalf("search open active = %s, want Alpha", root.tabs[root.active].ID)
+	}
+	if root.selected != a || !root.expanded["f:"+fid] {
+		t.Fatalf("tree not revealed: selected=%q expanded=%v", root.selected, root.expanded)
 	}
 }

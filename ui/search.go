@@ -96,12 +96,14 @@ func (r *Root) globalSearch(c *ui.Context) {
 				if btn.Clicked() {
 					r.searchOpen = false
 					r.openRequest(req.ID)
+					r.revealRequestInTree(req.ID)
 				}
 			}).Height(380)
 		}
 		if input.Submitted() && len(matches) > 0 {
 			r.searchOpen = false
 			r.openRequest(matches[0].ID)
+			r.revealRequestInTree(matches[0].ID)
 		}
 		ui.Row(c).Gap(8).Justify(ui.End).Children(func() {
 			if ui.Button(c, "关闭").Clicked() {
