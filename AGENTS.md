@@ -123,6 +123,7 @@ api-z 的存在理由就是这条链路。**不要退回全量字符串 + 每帧
 - 树 CRUD 走 `app/store_crud.go`；UI 动作/弹窗在 `ui/tree_actions.go`，不要直接拼 SQL。
 - 集合/文件夹设置走 `ui/node_settings.go` + `Store.UpdateNodeMeta`：Auth 用 `app.MergeAuth`，OpenAPI 绑定用 `app.SetCollectionOpenAPI`（保留 auth/color 等其它 meta）；设置弹窗不要直接改数据库。
 - 左侧集合 Tab 由 `ui/collection_tabs.go` 管理：`Root.activeCollection` / `colMRU`，树只渲染当前集合；Tab 放不下时保留最近使用项，其余进「更多集合」下拉。新增集合/导入/OpenAPI 刷新/打开其他集合的请求后必须调用 `activateCollection`。
+- 切换编辑器 Tab（点击/Ctrl+Tab/关闭后激活相邻 Tab）必须调用 `Root.focusRequest`：切集合、选中 Request、展开并滚动树。
 - 多标签最近切换用 `Root.mru`（`Ctrl+Tab` 在最近两个之间切换）；全局搜索用 `Ctrl+K`，从搜索结果打开请求后必须调用 `revealRequestInTree`，展开祖先目录并在左侧树定位。
 - URL 输入用 `ui/url_input.go` 在 `{{var}}` 下绘制主题强调色底纹并用强调色重绘变量文字；仅在文本未超出输入框时绘制，光标位于变量内时跳过该变量，避免横向滚动/光标遮挡。
 - 主题：MyGo 每帧都会把 Context 主题重置为桌面默认，`applyTheme` 必须每帧 `SetTheme`，不能用 themeKey 跳过；themeKey 只用于 SetZoom 与原生窗口底色。

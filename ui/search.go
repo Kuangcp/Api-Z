@@ -46,7 +46,7 @@ func (r *Root) switchRecent() {
 	for i, ed := range r.tabs {
 		if ed.ID == id {
 			r.active = i
-			r.selected = id
+			r.focusRequest(id)
 			r.touchMRU(id)
 			r.rememberActiveRequest()
 			return

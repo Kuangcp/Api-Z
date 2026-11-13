@@ -316,6 +316,9 @@ func (r *Root) closeRequestTab(id string) {
 		if r.active < 0 {
 			r.active = 0
 		}
+		if len(r.tabs) > 0 {
+			r.focusRequest(r.tabs[r.active].ID)
+		}
 		r.rememberActiveRequest()
 		return
 	}
@@ -346,6 +349,9 @@ func (r *Root) closeTabsForRemoved() {
 	}
 	if r.active < 0 {
 		r.active = 0
+	}
+	if len(r.tabs) > 0 {
+		r.focusRequest(r.tabs[r.active].ID)
 	}
 	r.rememberActiveRequest()
 }

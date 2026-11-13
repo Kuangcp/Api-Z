@@ -528,11 +528,8 @@ func (r *Root) reloadTree() {
 func (r *Root) openRequest(id string) {
 	for i, ed := range r.tabs {
 		if ed.ID == id {
-			if meta, found := r.tree.Request(id); found {
-				r.activateCollection(meta.CollectionID)
-			}
 			r.active = i
-			r.selected = id
+			r.focusRequest(id)
 			r.touchMRU(id)
 			r.rememberActiveRequest()
 			return
@@ -552,6 +549,19 @@ func (r *Root) openRequest(id string) {
 	r.selected = id
 	r.touchMRU(id)
 	r.rememberActiveRequest()
+}
+
+// focusRequest switches the sidebar to the request's collection, selects it
+// and scrolls the tree to its row. Tab switches call this so the tree follows
+// the active editor.
+func (r *Root) focusRequest(id string) {
+	req, ok := r.tree.Request(id)
+	if !ok {
+		return
+	}
+	r.activateCollection(req.CollectionID)
+	r.selected = id
+	r.revealRequestInTree(id)
 }
 
 // revealRequestInTree expands the request's folder path and scrolls the
@@ -662,7 +672,7 @@ func (r *Root) tabBar(c *ui.Context) {
 			})
 			if btn.Clicked() {
 				r.active = i
-				r.selected = ed.ID
+				r.focusRequest(ed.ID)
 				r.touchMRU(ed.ID)
 				r.rememberActiveRequest()
 			}
