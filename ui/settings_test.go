@@ -292,3 +292,18 @@ func TestSyncSettingsUI(t *testing.T) {
 		t.Fatalf("saved sync prefs = %#v warn=%q", got, warn)
 	}
 }
+
+func TestSyncBranchCanBeClearedInInput(t *testing.T) {
+	store, paths := collectionTestStore(t)
+	tree, _ := store.LoadTree()
+	root := NewRoot(paths, store, tree, app.EnvState{Version: 1})
+	root.syncPrefs.Branch = ""
+	root.saveSyncPrefs()
+	if root.syncPrefs.Branch != "" {
+		t.Fatalf("input branch was forced to %q", root.syncPrefs.Branch)
+	}
+	got, _ := app.LoadSyncPrefs(root.syncPath)
+	if got.Branch != "main" {
+		t.Fatalf("persisted branch = %q", got.Branch)
+	}
+}

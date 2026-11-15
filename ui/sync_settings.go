@@ -122,13 +122,16 @@ func (r *Root) saveSyncPrefs() {
 	prefs.RepoURL = strings.TrimSpace(r.syncPrefs.RepoURL)
 	prefs.Branch = strings.TrimSpace(r.syncPrefs.Branch)
 	prefs.SSHKeyPath = strings.TrimSpace(r.syncPrefs.SSHKeyPath)
-	if prefs.Branch == "" {
-		prefs.Branch = "main"
+	persist := prefs
+	if persist.Branch == "" {
+		persist.Branch = "main"
 	}
-	if err := app.SaveSyncPrefs(r.syncPath, prefs); err != nil {
+	if err := app.SaveSyncPrefs(r.syncPath, persist); err != nil {
 		r.syncErr = "保存同步配置失败: " + err.Error()
 		return
 	}
+	// Keep the input's empty value while persisting "main" as the default;
+	// otherwise deleting the field immediately writes "main" back into it.
 	r.syncPrefs = prefs
 }
 
