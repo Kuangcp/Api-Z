@@ -1,12 +1,14 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -131,7 +133,7 @@ func (s *SyncService) Run(ctx context.Context, action string) SyncOutcome {
 }
 
 func (s *SyncService) push(ctx context.Context, eng *sync.Engine, prefs SyncPrefs, key []byte) SyncOutcome {
-	files, count, err := s.buildFiles(key)
+	files, count, err := s.buildFiles(eng, key)
 	if err != nil {
 		return SyncOutcome{Message: "生成同步文件失败：" + err.Error()}
 	}
@@ -207,26 +209,66 @@ func (s *SyncService) pull(ctx context.Context, eng *sync.Engine, prefs SyncPref
 	return SyncOutcome{OK: true, Applied: true, Message: fmt.Sprintf("%s：更新 %d 个集合", msg, n)}
 }
 
-func (s *SyncService) buildFiles(key []byte) (map[string][]byte, int, error) {
+func (s *SyncService) buildFiles(eng *sync.Engine, key []byte) (map[string][]byte, int, error) {
 	files := map[string][]byte{}
 	tree, err := s.Store.LoadTree()
 	if err != nil {
 		return nil, 0, err
 	}
 	for _, col := range tree.Collections {
-		p, err := s.Store.ExportPortableCollection(col.ID)
+		dir := sync.AppDir + "/collections/" + col.ID
+		var folders []syncFolderRef
+		folderMeta := map[string]string{}
+		for _, f := range tree.Folders {
+			if f.CollectionID != col.ID {
+				continue
+			}
+			folders = append(folders, syncFolderRef{ID: f.ID, Name: f.Name, ParentID: f.ParentID, SortOrder: f.SortOrder})
+			if strings.TrimSpace(f.MetaJSON) != "" && strings.TrimSpace(f.MetaJSON) != "{}" {
+				folderMeta[f.ID] = f.MetaJSON
+			}
+		}
+		sort.Slice(folders, func(i, j int) bool { return folders[i].ID < folders[j].ID })
+		var requests []syncRequestRef
+		for _, r := range tree.Requests {
+			if r.CollectionID != col.ID {
+				continue
+			}
+			requests = append(requests, syncRequestRef{ID: r.ID, Name: r.Name, FolderID: r.FolderID, SortOrder: r.SortOrder})
+			plain, err := json.MarshalIndent(syncRequestFile{
+				ID: r.ID, Name: r.Name, Method: r.Method, URL: r.URL,
+				HeadersText: r.HeadersText, ParamsText: r.ParamsText,
+				BodyText: r.BodyText, MetaJSON: r.MetaJSON,
+			}, "", "  ")
+			if err != nil {
+				return nil, 0, err
+			}
+			rel := dir + "/requests/" + r.ID + ".enc"
+			enc, err := s.encryptChanged(eng, rel, key, append(plain, '\n'))
+			if err != nil {
+				return nil, 0, err
+			}
+			files[rel] = enc
+		}
+		sort.Slice(requests, func(i, j int) bool { return requests[i].ID < requests[j].ID })
+		structData, err := json.MarshalIndent(syncStructure{
+			FormatVersion: 2, ID: col.ID, Name: col.Name, Folders: folders, Requests: requests,
+		}, "", "  ")
 		if err != nil {
 			return nil, 0, err
 		}
-		data, err := PostmanJSON(p)
+		files[dir+"/collection.json"] = append(structData, '\n')
+		settingsData, err := json.MarshalIndent(syncSettings{
+			CollectionMeta: col.MetaJSON, FolderMeta: folderMeta,
+		}, "", "  ")
 		if err != nil {
 			return nil, 0, err
 		}
-		enc, err := sync.Encrypt(key, data)
+		encSettings, err := s.encryptChanged(eng, dir+"/settings.enc", key, append(settingsData, '\n'))
 		if err != nil {
 			return nil, 0, err
 		}
-		files[sync.AppDir+"/collections/"+col.ID+".enc"] = []byte(enc + "\n")
+		files[dir+"/settings.enc"] = encSettings
 	}
 	env, err := s.Store.LoadEnvironments()
 	if err != nil {
@@ -236,13 +278,29 @@ func (s *SyncService) buildFiles(key []byte) (map[string][]byte, int, error) {
 	if err != nil {
 		return nil, 0, err
 	}
-	envEnc, err := sync.Encrypt(key, append(envData, '\n'))
+	envEnc, err := s.encryptChanged(eng, sync.AppDir+"/env/environments.enc", key, append(envData, '\n'))
 	if err != nil {
 		return nil, 0, err
 	}
-	files[sync.AppDir+"/env/environments.enc"] = []byte(envEnc + "\n")
+	files[sync.AppDir+"/env/environments.enc"] = envEnc
 	files[sync.KCVFile] = []byte(sync.KCV(key) + "\n")
 	return files, len(tree.Collections), nil
+}
+
+// encryptChanged reuses the existing ciphertext when the plaintext is
+// unchanged, so a no-op push does not rewrite every entity file.
+func (s *SyncService) encryptChanged(eng *sync.Engine, rel string, key, plain []byte) ([]byte, error) {
+	path := filepath.Join(eng.WorkTree, filepath.FromSlash(rel))
+	if old, err := os.ReadFile(path); err == nil {
+		if decoded, err := sync.Decrypt(key, strings.TrimSpace(string(old))); err == nil && bytes.Equal(decoded, plain) {
+			return old, nil
+		}
+	}
+	enc, err := sync.Encrypt(key, plain)
+	if err != nil {
+		return nil, err
+	}
+	return []byte(enc + "\n"), nil
 }
 
 func (s *SyncService) importFiles(eng *sync.Engine, key []byte) (int, error) {
@@ -252,18 +310,74 @@ func (s *SyncService) importFiles(eng *sync.Engine, key []byte) (int, error) {
 	}
 	applied := 0
 	for rel, raw := range files {
-		if !strings.HasPrefix(rel, sync.AppDir+"/collections/") || !strings.HasSuffix(rel, ".enc") {
+		if !strings.HasPrefix(rel, sync.AppDir+"/collections/") || !strings.HasSuffix(rel, "/collection.json") {
 			continue
 		}
-		plain, err := sync.Decrypt(key, strings.TrimSpace(string(raw)))
-		if err != nil {
+		var structure syncStructure
+		if err := json.Unmarshal(raw, &structure); err != nil {
 			return applied, fmt.Errorf("%s: %w", rel, err)
 		}
-		portable, err := ParsePostmanCollection(plain)
-		if err != nil {
-			return applied, fmt.Errorf("%s: %w", rel, err)
+		dir := strings.TrimSuffix(rel, "/collection.json")
+		id := strings.TrimPrefix(dir, sync.AppDir+"/collections/")
+		if id == "" {
+			continue
 		}
-		id := strings.TrimSuffix(filepath.Base(rel), ".enc")
+		var settings syncSettings
+		settingsRaw, ok := files[dir+"/settings.enc"]
+		if !ok {
+			return applied, fmt.Errorf("%s/settings.enc 缺失", dir)
+		}
+		plain, err := sync.Decrypt(key, strings.TrimSpace(string(settingsRaw)))
+		if err != nil {
+			return applied, fmt.Errorf("%s/settings.enc: %w", dir, err)
+		}
+		if err := json.Unmarshal(plain, &settings); err != nil {
+			return applied, fmt.Errorf("%s/settings.enc: %w", dir, err)
+		}
+		portable := PortableCollection{ID: id, Name: structure.Name, MetaJSON: settings.CollectionMeta}
+		folderNodes := map[string]*PortableFolder{}
+		for _, f := range structure.Folders {
+			folderNodes[f.ID] = &PortableFolder{ID: f.ID, Name: f.Name, MetaJSON: settings.FolderMeta[f.ID], SortOrder: f.SortOrder}
+		}
+		for _, ref := range structure.Requests {
+			rawReq, ok := files[dir+"/requests/"+ref.ID+".enc"]
+			if !ok {
+				return applied, fmt.Errorf("%s/requests/%s.enc 缺失", dir, ref.ID)
+			}
+			reqPlain, err := sync.Decrypt(key, strings.TrimSpace(string(rawReq)))
+			if err != nil {
+				return applied, fmt.Errorf("%s/requests/%s.enc: %w", dir, ref.ID, err)
+			}
+			var rf syncRequestFile
+			if err := json.Unmarshal(reqPlain, &rf); err != nil {
+				return applied, fmt.Errorf("%s/requests/%s.enc: %w", dir, ref.ID, err)
+			}
+			pr := PortableRequest{ID: rf.ID, Name: rf.Name, Method: rf.Method, URL: rf.URL,
+				HeadersText: rf.HeadersText, ParamsText: rf.ParamsText, BodyText: rf.BodyText,
+				MetaJSON: rf.MetaJSON, SortOrder: ref.SortOrder}
+			if ref.FolderID == "" {
+				portable.Requests = append(portable.Requests, pr)
+			} else if parent := folderNodes[ref.FolderID]; parent != nil {
+				parent.Requests = append(parent.Requests, pr)
+			}
+		}
+		var buildFolder func(id string) PortableFolder
+		buildFolder = func(id string) PortableFolder {
+			node := folderNodes[id]
+			out := *node
+			for _, f := range structure.Folders {
+				if f.ParentID == id {
+					out.Folders = append(out.Folders, buildFolder(f.ID))
+				}
+			}
+			return out
+		}
+		for _, f := range structure.Folders {
+			if f.ParentID == "" {
+				portable.Folders = append(portable.Folders, buildFolder(f.ID))
+			}
+		}
+		sortPortableFolders(&portable)
 		exists, err := s.Store.CollectionExists(id)
 		if err != nil {
 			return applied, err
@@ -289,6 +403,22 @@ func (s *SyncService) importFiles(eng *sync.Engine, key []byte) (int, error) {
 		}
 	}
 	return applied, nil
+}
+
+func sortPortableFolders(p *PortableCollection) {
+	sort.SliceStable(p.Folders, func(i, j int) bool { return p.Folders[i].SortOrder < p.Folders[j].SortOrder })
+	for i := range p.Folders {
+		sortPortableFolder(&p.Folders[i])
+	}
+	sort.SliceStable(p.Requests, func(i, j int) bool { return p.Requests[i].SortOrder < p.Requests[j].SortOrder })
+}
+
+func sortPortableFolder(f *PortableFolder) {
+	sort.SliceStable(f.Folders, func(i, j int) bool { return f.Folders[i].SortOrder < f.Folders[j].SortOrder })
+	for i := range f.Folders {
+		sortPortableFolder(&f.Folders[i])
+	}
+	sort.SliceStable(f.Requests, func(i, j int) bool { return f.Requests[i].SortOrder < f.Requests[j].SortOrder })
 }
 
 func (s *SyncService) markSynced() {

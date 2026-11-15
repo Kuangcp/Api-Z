@@ -295,7 +295,7 @@ go run . -migrate -api-x-home ~/.local/share/api-x -data-dir /tmp/api-z-smoke
 - [x] P6 第四批（部分）：环境选择器语义色与手动颜色配置
 - [x] P6 第五批（部分）：请求日志、goroutine/UI panic 兜底与堆栈记录
 - [x] P6 第五批（部分）：请求树与请求/响应 Body 独立字体/字号
-- [x] P6 互操作：Git 同步（共享仓库 api-z/ 目录、加密集合/环境、clone/pull/merge/push）
+- [x] P6 互操作：Git 同步（共享仓库 api-z/ 目录、明文集合结构 + 加密设置/每请求文件 + 加密环境、clone/pull/merge/push、密文复用）
 - [x] UI 修复：主题切换每帧重设、URL 变量强调色高亮、编辑器 Tab 方法/名称间距
 
 ### 已实测

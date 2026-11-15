@@ -108,7 +108,7 @@ api-z 的存在理由就是这条链路。**不要退回全量字符串 + 每帧
 - 原始行用等宽字体、`SingleLine`、`clipLine`；AGUI 文本用分块 markdown。
 - 历史回看只读 HAR；不要假装支持重放。
 - 代码导出（cURL / Raw HTTP）走 `app/curl.go` 的 `FormatCurl` / `FormatHTTP`，输入必须是发送时的 `httpclient.Spec`（已替换环境、合并 Params、注入 Auth），不要拼编辑器原始文本。
-- Git 同步走 `app/syncservice.go` + `sync/`：共享仓库只写 `api-z/`，根 README 不生成/不修改；集合与环境用同步密钥加密，拉取按 id 合并、保留本地独有数据。
+- Git 同步走 `app/syncservice.go` + `sync/`：共享仓库只写 `api-z/`，根 README 不生成/不修改。格式 v2：`collections/<id>/collection.json` 明文保存集合名/多级目录/Request ID+名称；`settings.enc` 加密集合/目录 meta（Auth、OpenAPI 等）；`requests/<id>.enc` 每请求一个加密文件；`env/environments.enc` 加密环境。未变化明文必须复用已有密文；不支持旧版单集合 `.enc`。
 - `data/` 目录 Push/Pull 走 `app/data_sync.go`：集合 `data/collection/<id>.json`、环境 `data/env/environments.json`；Pull 按集合 id upsert、环境按 id 合并且不删除本地项。UI 动作在 `ui/data_sync.go`。
 - Postman 导入/导出走 `app/postman.go` 的 `PortableCollection`；不要直接改 JSON 或复制 api-x 字段逻辑。导入生成新 id，导出保留 `_api_x_id` 供回导/合并；禁用 Header/query 用 `! ` 前缀；auth 为空/inherit 时导出省略。
 - 请求右键菜单只保留复制请求/复制 cURL/移动到文件夹/删除；打开用单击，重命名用双击请求行；复制 cURL 走 `app.BuildSpec` + `FormatCurl`，不要另写一套变量/Auth 解析。

@@ -44,14 +44,38 @@ func TestSyncPushPullSharedRepo(t *testing.T) {
 		t.Fatalf("push = %#v", out)
 	}
 	work := SyncWorkTree(prefsA)
-	if _, err := os.Stat(filepath.Join(work, "api-z", "collections", cid+".enc")); err != nil {
-		t.Fatalf("collection file: %v", err)
+	collDir := filepath.Join(work, "api-z", "collections", cid)
+	structure, err := os.ReadFile(filepath.Join(collDir, "collection.json"))
+	if err != nil {
+		t.Fatalf("structure file: %v", err)
+	}
+	if !strings.Contains(string(structure), rid) || !strings.Contains(string(structure), "Ping") {
+		t.Fatalf("structure missing request ref: %s", structure)
+	}
+	settings, err := os.ReadFile(filepath.Join(collDir, "settings.enc"))
+	if err != nil || strings.Contains(string(settings), "https://example.com") {
+		t.Fatalf("settings should be encrypted: %v %q", err, settings)
+	}
+	reqPath := filepath.Join(collDir, "requests", rid+".enc")
+	firstCipher, err := os.ReadFile(reqPath)
+	if err != nil {
+		t.Fatalf("request file: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(work, "README.md")); !os.IsNotExist(err) {
 		t.Fatalf("sync created a root README: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(work, "api-z", "key.kcv")); err != nil {
 		t.Fatalf("kcv: %v", err)
+	}
+
+	// A no-op push must reuse ciphertext rather than rewrite entity files.
+	out = svcA.Run(context.Background(), "push")
+	if !out.OK {
+		t.Fatalf("second push = %#v", out)
+	}
+	secondCipher, err := os.ReadFile(reqPath)
+	if err != nil || string(firstCipher) != string(secondCipher) {
+		t.Fatalf("unchanged request ciphertext was rewritten")
 	}
 
 	pathsB := testPaths(t)
