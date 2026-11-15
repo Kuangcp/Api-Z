@@ -65,6 +65,7 @@ go run . -migrate \
 - Postman Collection v2.1 导入/导出：嵌套文件夹、根请求、auth、禁用 Header、raw/urlencoded body、query/params、集合变量与描述；保留 `_api_x_id` 便于回导。
 - cURL 导入/导出：标题栏 cURL 图标或集合/文件夹/Request 右键「解析 cURL」直接读取剪贴板最新命令并创建请求（Request 右键建在其下方；选中 Request 时插到该 Request 下方；选中文件夹则建在其下；否则建在当前集合根）；手动粘贴对话框仍保留；支持 `-X/-H/-d/-u/-b/-A/-e/-G/--json`、`$'...'` 与续行。请求树右键提供「复制 cURL」「复制为 Raw HTTP」（均已应用环境变量与 Auth）。
 - `data/` 目录 Push/Pull：集合导出为 `data/collection/<id>.json`（Postman v2.1，保留 `_api_x_id`），环境写 `data/env/environments.json`；Pull 按 id 新增/合并，不删除本地数据。
+- Git 同步：设置「同步」页配置仓库/分支/SSH 私钥；集合与环境加密写入共享仓库的 `api-z/` 目录，克隆/拉取/合并后导入、提交先合并再推送。仓库根目录 README 不由本应用生成或修改，可与 db-g 共用同一仓库。
 - OpenAPI 导入/刷新：`tags` → 文件夹、path/operation → 请求，支持 servers/环境变量 root、query/header 参数、JSON/multipart 示例；刷新按 `METHOD + normalized path` 合并，保留本地 URL/Headers/Params/Body/Auth，不删除服务端已移除的接口。
 - 集合/文件夹右键「设置…」：配置 Auth（inherit/noauth/bearer/basic/apikey）与集合级 OpenAPI 地址/root 来源（servers 主域名或 `{{env}}` 环境变量），留空地址可解绑。
 

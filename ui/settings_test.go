@@ -265,3 +265,30 @@ func TestThemeAppliesEveryFrame(t *testing.T) {
 		t.Fatal("dark theme did not persist across frames")
 	}
 }
+
+func TestSyncSettingsUI(t *testing.T) {
+	store, paths := collectionTestStore(t)
+	tree, _ := store.LoadTree()
+	root := NewRoot(paths, store, tree, app.EnvState{Version: 1})
+	tt := ui.NewTester(root.View, 1200, 900)
+	tt.Frame()
+	if err := tt.Click("设置"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if err := tt.Click("同步"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if !tt.HasText("Git 同步") || !tt.HasText("仓库地址") || !tt.HasText("同步密钥") {
+		t.Fatalf("sync settings = %v", tt.Texts())
+	}
+	root.syncPrefs.RepoURL = "git@example.com:me/sync.git"
+	root.syncPrefs.Branch = "dev"
+	root.syncPrefs.SSHKeyPath = "~/.ssh/id_test"
+	root.saveSyncPrefs()
+	got, warn := app.LoadSyncPrefs(root.syncPath)
+	if warn != "" || got.RepoURL != root.syncPrefs.RepoURL || got.Branch != "dev" {
+		t.Fatalf("saved sync prefs = %#v warn=%q", got, warn)
+	}
+}
