@@ -247,3 +247,24 @@ func TestBinaryFileName(t *testing.T) {
 		}
 	}
 }
+
+func TestSessionReadTimeoutBeforeHeaders(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(300 * time.Millisecond)
+		fmt.Fprint(w, "late")
+	}))
+	defer srv.Close()
+	paths := testPaths(t)
+	store, err := OpenStore(paths.DBPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	s := NewSession("read-timeout", paths, store, nil)
+	s.Start(httpclient.Spec{Method: "GET", URL: srv.URL, ReadTimeout: 50 * time.Millisecond, RequestTimeout: 5 * time.Second})
+	s.Wait()
+	snap := s.Snapshot()
+	if !snap.Done || snap.Error == "" || !strings.Contains(snap.Error, "读取响应超时") {
+		t.Fatalf("snapshot = %#v", snap)
+	}
+}

@@ -87,7 +87,7 @@ api-z 的存在理由就是这条链路。**不要退回全量字符串 + 每帧
 - 环境颜色：`Environment.Color` 持久化在 environments.json；空值由 `app.EnvironmentColorHint` 按名称/tag 推断（prod 红、test 绿、local/dev 蓝），UI 用 `envTextColor` 映射到主题色。环境管理器颜色只改 draft，按「保存环境」落盘。
 - Auth 继承：request → 父 folder → collection，第一个非 `inherit` 生效（`app.Tree.EffectiveAuth`）。
 - 传输层禁止 header：`Content-Length`/`Transfer-Encoding`/`Connection`/`Upgrade`/`Expect`；`Host` 单独设置。
-- 超时：当前请求总超时 120s；后续设置页可配。
+- 超时：`request.json` 配 `readTimeoutMs`（等待响应头/首字节）与 `totalTimeoutMs`（完整交换）；`Editor.buildSpec` 注入 `Spec.ReadTimeout/RequestTimeout`，Session 首字节计时器取消未响应请求。默认均 120s，范围 1s–24h。
 - SSE 检测：`Content-Type: text/event-stream`，或首个 `data:`/`event:` 行；不用整包 JSON 解析来判断。
 - 解压：gzip / deflate / br；Go 自动 gzip 时看 `resp.Uncompressed`。
 - 代理：`http.ProxyFromEnvironment`；SOCKS/UI 代理尚未做。

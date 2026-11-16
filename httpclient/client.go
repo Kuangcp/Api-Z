@@ -25,6 +25,8 @@ type Spec struct {
 	Headers        []Header
 	Body           []byte
 	RequestTimeout time.Duration
+	// ReadTimeout bounds the wait for the response headers/first byte.
+	ReadTimeout time.Duration
 }
 
 // Handler receives a response as it arrives. Its methods are called from the

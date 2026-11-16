@@ -115,21 +115,25 @@ type Root struct {
 	nodeSettingsErr      string
 	appIcon              ui.ImageSource
 
-	themePrefs    app.ThemePrefs
-	themePath     string
-	themeKey      string
-	sessionPath   string
-	recentPath    string
-	syncPath      string
-	syncPrefs     app.SyncPrefs
-	syncKeyInput  string
-	syncBusy      bool
-	syncMsg       string
-	syncErr       string
-	accentHex     string
-	fontInput     string
-	treeFontInput string
-	bodyFontInput string
+	themePrefs        app.ThemePrefs
+	themePath         string
+	themeKey          string
+	sessionPath       string
+	recentPath        string
+	syncPath          string
+	syncPrefs         app.SyncPrefs
+	requestPrefsPath  string
+	requestPrefs      app.RequestPrefs
+	readTimeoutInput  string
+	totalTimeoutInput string
+	syncKeyInput      string
+	syncBusy          bool
+	syncMsg           string
+	syncErr           string
+	accentHex         string
+	fontInput         string
+	treeFontInput     string
+	bodyFontInput     string
 
 	keymap      map[string]string
 	keymapPath  string
@@ -152,20 +156,21 @@ type Root struct {
 
 func NewRoot(paths app.Paths, store *app.Store, tree app.Tree, env app.EnvState) *Root {
 	r := &Root{
-		paths:          paths,
-		store:          store,
-		client:         httpclient.NewClient(),
-		tree:           tree,
-		expanded:       map[string]bool{},
-		sessions:       map[string]*app.Session{},
-		env:            env.Normalize(),
-		sidebarWidth:   300,
-		requestPercent: 50,
-		themePath:      app.ThemePath(paths.ConfigDir),
-		keymapPath:     app.KeymapPath(paths.ConfigDir),
-		sessionPath:    app.SessionPath(paths.ConfigDir),
-		recentPath:     app.RecentPath(paths.ConfigDir),
-		syncPath:       app.SyncPrefsPath(paths.ConfigDir),
+		paths:            paths,
+		store:            store,
+		client:           httpclient.NewClient(),
+		tree:             tree,
+		expanded:         map[string]bool{},
+		sessions:         map[string]*app.Session{},
+		env:              env.Normalize(),
+		sidebarWidth:     300,
+		requestPercent:   50,
+		themePath:        app.ThemePath(paths.ConfigDir),
+		keymapPath:       app.KeymapPath(paths.ConfigDir),
+		sessionPath:      app.SessionPath(paths.ConfigDir),
+		recentPath:       app.RecentPath(paths.ConfigDir),
+		syncPath:         app.SyncPrefsPath(paths.ConfigDir),
+		requestPrefsPath: app.RequestPrefsPath(paths.ConfigDir),
 	}
 	for _, c := range tree.Collections {
 		r.expanded["c:"+c.ID] = true
@@ -182,6 +187,9 @@ func NewRoot(paths app.Paths, store *app.Store, tree app.Tree, env app.EnvState)
 	r.keymap = mergedKeymap(app.LoadKeymap(r.keymapPath))
 	r.loadRecentRequests()
 	r.syncPrefs, _ = app.LoadSyncPrefs(r.syncPath)
+	r.requestPrefs = app.LoadRequestPrefs(r.requestPrefsPath)
+	r.readTimeoutInput = fmtTimeoutSeconds(r.requestPrefs.ReadTimeoutMS)
+	r.totalTimeoutInput = fmtTimeoutSeconds(r.requestPrefs.TotalTimeoutMS)
 	r.ensureActiveCollection()
 	r.restoreLastRequest()
 	r.status = fmt.Sprintf("%d 个集合 · %d 个请求", len(tree.Collections), len(tree.Requests))

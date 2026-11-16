@@ -15,13 +15,15 @@ func (r *Root) settingsModal(c *ui.Context) {
 	t := c.Theme()
 	ui.Modal(c, &r.settingsOpen, func() {
 		ui.Text(c, "设置").FontSize(15).Bold()
-		ui.Tabs(c, &r.settingsTab, "主题", "字体", "同步", "快捷键")
+		ui.Tabs(c, &r.settingsTab, "主题", "字体", "请求", "同步", "快捷键")
 		switch r.settingsTab {
 		case 0:
 			r.themeSettings(c, t)
 		case 1:
 			r.fontSettings(c, t)
 		case 2:
+			r.requestSettings(c, t)
+		case 3:
 			r.syncSettings(c, t)
 		default:
 			r.keymapSettings(c, t)

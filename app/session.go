@@ -77,15 +77,17 @@ type Session struct {
 	binary      bool
 	fileName    string
 
-	started   time.Time
-	finished  time.Time
-	ttft      time.Duration
-	tpotSum   time.Duration
-	lastEvent time.Time
-	bytes     int64
-	events    int
-	spool     *os.File
-	spoolPath string
+	started       time.Time
+	finished      time.Time
+	ttft          time.Duration
+	readTimer     *time.Timer
+	firstResponse bool
+	tpotSum       time.Duration
+	lastEvent     time.Time
+	bytes         int64
+	events        int
+	spool         *os.File
+	spoolPath     string
 
 	lines        []string
 	lineEvent    []int
@@ -149,6 +151,8 @@ func (s *Session) Start(spec httpclient.Spec) {
 	s.fileName = ""
 	s.started = now
 	s.finished = time.Time{}
+	s.readTimer = nil
+	s.firstResponse = false
 	s.ttft = 0
 	s.tpotSum = 0
 	s.lastEvent = time.Time{}
@@ -199,6 +203,23 @@ func (s *Session) Start(spec httpclient.Spec) {
 		ctx, s.cancel = context.WithCancel(ctx)
 	}
 	s.mu.Unlock()
+
+	if spec.ReadTimeout > 0 {
+		s.readTimer = time.AfterFunc(spec.ReadTimeout, func() {
+			s.mu.Lock()
+			if s.firstResponse || s.done {
+				s.mu.Unlock()
+				return
+			}
+			s.errMsg = "读取响应超时：未在限定时间内收到首字节"
+			cancel := s.cancel
+			s.mu.Unlock()
+			if cancel != nil {
+				cancel()
+			}
+			s.notifyNow()
+		})
+	}
 
 	LogInfo("exec", "request start", "method", spec.Method, "url", RedactURL(spec.URL),
 		"headers", len(spec.Headers), "body_bytes", len(spec.Body))
@@ -399,6 +420,11 @@ func (h *sessionHandler) OnHeaders(status int, header http.Header, contentType s
 	s.contentType = contentType
 	s.isSSE = isSSE
 	s.binary = !isSSE && IsBinaryContentType(contentType)
+	s.firstResponse = true
+	if s.readTimer != nil {
+		s.readTimer.Stop()
+		s.readTimer = nil
+	}
 	if s.binary {
 		s.fileName = BinaryFileName(contentType, header.Get("Content-Disposition"), s.spec.URL)
 	}
@@ -464,6 +490,10 @@ func (h *sessionHandler) OnDone(err error) {
 	s.running = false
 	s.done = true
 	s.finished = time.Now()
+	if s.readTimer != nil {
+		s.readTimer.Stop()
+		s.readTimer = nil
+	}
 	if s.cancel != nil {
 		s.cancel()
 		s.cancel = nil
@@ -545,6 +575,10 @@ func (s *Session) finishPanic(msg string) {
 	if s.cancel != nil {
 		s.cancel()
 		s.cancel = nil
+	}
+	if s.readTimer != nil {
+		s.readTimer.Stop()
+		s.readTimer = nil
 	}
 	if s.spool != nil {
 		_ = s.spool.Close()

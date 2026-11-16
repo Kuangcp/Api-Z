@@ -216,7 +216,7 @@ api-z 使用自己的数据目录与 SQLite（WAL）：
 第三批（请求语义与网络）：
 - Body `表单` 按 `key: value` URL 编码为 wire body。
 - Multipart：文本/JSON/文件 part、文件选择器、MIME 猜测、大文件流式写；cURL `-F` 导入。
-- 网络设置：连接/读取/请求超时、HTTP/1.1/2、HTTP/HTTPS 代理、bypass 正则。
+- 网络设置：读取首字节/完整请求超时（已完成）；连接超时、HTTP/1.1/2、HTTP/HTTPS 代理、bypass 正则待补。
 - 自定义 SSE 文本提取路径。
 - 集合/文件夹设置：Auth、OpenAPI 地址/根地址编辑（已完成）；颜色与继承待补。
 

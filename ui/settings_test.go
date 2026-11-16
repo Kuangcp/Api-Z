@@ -307,3 +307,44 @@ func TestSyncBranchCanBeClearedInInput(t *testing.T) {
 		t.Fatalf("persisted branch = %q", got.Branch)
 	}
 }
+
+func TestRequestTimeoutSettings(t *testing.T) {
+	store, paths := collectionTestStore(t)
+	cid, _ := store.CreateCollection("Demo")
+	rid, _ := store.CreateRequest(cid, "", "SSE")
+	_ = store.SaveRequest(app.Request{ID: rid, Name: "SSE", Method: "GET", URL: "https://example.com"})
+	tree, _ := store.LoadTree()
+	root := NewRoot(paths, store, tree, app.EnvState{Version: 1})
+	tt := ui.NewTester(root.View, 1200, 900)
+	tt.Frame()
+	if err := tt.Click("设置"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if err := tt.Click("请求"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if !tt.HasText("首字节读超时") || !tt.HasText("完整请求超时") {
+		t.Fatalf("request settings = %v", tt.Texts())
+	}
+	root.readTimeoutInput = "300"
+	root.totalTimeoutInput = "900"
+	if err := tt.Click("保存请求设置"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if root.requestPrefs.ReadTimeoutMS != 300000 || root.requestPrefs.TotalTimeoutMS != 900000 {
+		t.Fatalf("prefs = %#v", root.requestPrefs)
+	}
+	got := app.LoadRequestPrefs(root.requestPrefsPath)
+	if got.ReadTimeoutMS != 300000 || got.TotalTimeoutMS != 900000 {
+		t.Fatalf("persisted = %#v", got)
+	}
+	root.openRequest(rid)
+	ed := root.tabs[0]
+	spec := ed.buildSpec()
+	if spec.ReadTimeout.Seconds() != 300 || spec.RequestTimeout.Seconds() != 900 {
+		t.Fatalf("spec timeouts = %v / %v", spec.ReadTimeout, spec.RequestTimeout)
+	}
+}
