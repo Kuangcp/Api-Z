@@ -11,3 +11,12 @@ func TestURLVariablePattern(t *testing.T) {
 		t.Fatalf("single braces matched: %#v", m)
 	}
 }
+
+func TestMethodLabelShortensToFour(t *testing.T) {
+	cases := map[string]string{"GET": "GET", "POST": "POST", "OPTIONS": "OPTI", "PATCH": "PATC"}
+	for in, want := range cases {
+		if got := methodLabel(in); got != want {
+			t.Fatalf("methodLabel(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

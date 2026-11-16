@@ -390,7 +390,8 @@ func (r *Root) treeRow(c *ui.Context, row treeRow) {
 			} else {
 				ui.Text(c, " ").FontSize(10)
 			}
-			text(row.method, r.treeMethodSize()).Bold().TextColor(methodColor(c, row.method))
+			text(methodLabel(row.method), r.treeMethodSize()).Bold().
+				TextColor(methodColor(c, row.method)).Width(r.treeMethodWidth()).SingleLine()
 			ui.Box(c).Width(6)
 			text(row.name, r.treeTextSize(12.5)).SingleLine().Grow(1)
 		}
@@ -415,6 +416,15 @@ func (r *Root) treeRow(c *ui.Context, row treeRow) {
 	kind, id := r.nodeIdentity(row)
 	attachTreeDrag(btn, kind, id)
 	r.attachTreeDrop(c, btn, row)
+}
+
+// methodLabel keeps the method column compact: at most four characters.
+func methodLabel(method string) string {
+	runes := []rune(method)
+	if len(runes) > 4 {
+		return string(runes[:4])
+	}
+	return method
 }
 
 func rowLabel(row treeRow) string {

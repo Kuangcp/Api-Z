@@ -100,6 +100,14 @@ func (r *Root) treeMethodSize() float32 {
 	return 9.5
 }
 
+func (r *Root) treeMethodWidth() float32 {
+	w := r.treeMethodSize() * 3.2
+	if w < 32 {
+		return 32
+	}
+	return w
+}
+
 func (r *Root) bodyFontFamily(fallback string) string {
 	if f := strings.TrimSpace(r.themePrefs.BodyFont); f != "" {
 		return f
