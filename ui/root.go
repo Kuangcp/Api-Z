@@ -349,8 +349,12 @@ func (r *Root) treeRow(c *ui.Context, row treeRow) {
 		}
 		return e
 	}
+	indent := 4 + float32(row.depth)*14
+	if row.kind == rowRequest {
+		indent += 6
+	}
 	btn := ui.ButtonBase(c).Label(rowLabel(row)).Justify(ui.Start).
-		Padding(2, 6).PaddingStart(4 + float32(row.depth)*14).Radius(5)
+		Padding(2, 6).PaddingStart(indent).Radius(5)
 	if selected {
 		btn.Background(t.Accent.Alpha(0.14))
 	} else if btn.Hovered() {
@@ -367,6 +371,7 @@ func (r *Root) treeRow(c *ui.Context, row treeRow) {
 			}
 			ui.Icon(c, chevron).FontSize(13).TextColor(t.TextMuted)
 			ui.Icon(c, folder).FontSize(14).TextColor(t.TextMuted)
+			ui.Box(c).Width(5)
 			text(row.name, r.treeTextSize(12.5)).Bold().SingleLine().Grow(1)
 		case rowFolder:
 			chevron := iconChevronRight
@@ -377,6 +382,7 @@ func (r *Root) treeRow(c *ui.Context, row treeRow) {
 			}
 			ui.Icon(c, chevron).FontSize(13).TextColor(t.TextMuted)
 			ui.Icon(c, folder).FontSize(14).TextColor(t.TextMuted)
+			ui.Box(c).Width(5)
 			text(row.name, r.treeTextSize(12.5)).SingleLine().Grow(1)
 		case rowRequest:
 			if r.requestRunning(row.id) {
@@ -384,8 +390,8 @@ func (r *Root) treeRow(c *ui.Context, row treeRow) {
 			} else {
 				ui.Text(c, " ").FontSize(10)
 			}
-			text(row.method, r.treeMethodSize()).Bold().TextColor(methodColor(c, row.method)).
-				Width(r.treeMethodWidth())
+			text(row.method, r.treeMethodSize()).Bold().TextColor(methodColor(c, row.method))
+			ui.Box(c).Width(6)
 			text(row.name, r.treeTextSize(12.5)).SingleLine().Grow(1)
 		}
 	})
