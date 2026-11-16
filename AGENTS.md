@@ -116,7 +116,7 @@ api-z 的存在理由就是这条链路。**不要退回全量字符串 + 每帧
 - 图标用 Lucide 描线，集中放在 `ui/icons.go`，通过 `iconButton` / `iconButtonPlain` / `iconMenuButton` 使用；图标按钮必须有 `Label`（读屏）和 `Tooltip`，禁止手写零散 SVG。
 - 应用图标源文件 `assets/icon.svg`，`tools/genicon.sh` 用 rsvg-convert 生成 `icon-128/256/512.png`；`main.go` 嵌入 256 图标。不要手改 PNG。
 - OpenAPI 解析/合并走 `app/openapi.go` + `app/openapi_store.go`：tag→folder、确定性 ID、`METHOD normalizePath` syncKey。刷新只 upsert，不删除；保留本地 URL/Headers/Params/Body/Auth，只更新 name/method/meta/folder/sort。文件夹 ID 不得跨集合复用。
-- 请求树 `visibleRows` 必须走 `rowsSignature` 缓存，禁止每帧全量扫描所有 Request/重新排序；修改内存中的请求字段（如方法）后调用 `invalidateTreeRows`。请求名方法列固定 4 字符宽。
+- 请求树滚轮在 `treeWheelScroll` 中按 3 行走（Precise 触控板保留原生像素滚动）；`visibleRows` 必须走 `rowsSignature` 缓存，禁止每帧全量扫描所有 Request/重新排序；修改内存中的请求字段（如方法）后调用 `invalidateTreeRows`。请求名方法列固定 4 字符宽。
 - 树/列表选中、hover、空态要有明确视觉；破坏性操作必须二次确认（`ui/tree_actions.go` 的删除弹窗）。
 - 窗口为无边框自绘标题栏（`Root.titleBar`，38 DIP）：左侧应用图标 + Api-Z，右侧环境级联菜单/数据目录/设置与窗口按钮；整条 `DragWindow`。窗口底色用 `WindowBackgroundColor(themePrefs)`，圆角用 `WindowCornerRadius`。
 - 环境切换走 `ui/env_menu.go`：按钮显示 `标签 | 环境名`，弹出两级菜单（左标签、右环境），不要退回平铺 `ui.Select`；无环境和“管理环境…”放在左列底部；不再在标题栏重复放环境管理图标。

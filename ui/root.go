@@ -318,7 +318,7 @@ func (r *Root) sidebar(c *ui.Context) {
 			}
 			r.reveal = ""
 		}
-		ui.List(c, &r.treeList, len(rows), func(i int) {
+		treeList := ui.List(c, &r.treeList, len(rows), func(i int) {
 			if i < 0 || i >= len(rows) {
 				return
 			}
@@ -335,6 +335,9 @@ func (r *Root) sidebar(c *ui.Context) {
 				}
 				ui.Text(c, msg).Padding(12).TextColor(t.TextMuted)
 			}
+		})
+		treeList.HandleInput(func(ev ui.InputEvent) bool {
+			return r.treeWheelScroll(ev, len(rows))
 		})
 		if revealIdx >= 0 {
 			r.treeList.ScrollTo(revealIdx, ui.Start)
@@ -633,6 +636,35 @@ func (r *Root) openRequest(id string) {
 // focusRequest switches the sidebar to the request's collection, selects it
 // and scrolls the tree to its row. Tab switches call this so the tree follows
 // the active editor.
+// treeWheelScroll makes one mouse-wheel notch move three rows, closer to
+// browser scrolling than a single row. Trackpad (Precise) input keeps its
+// native pixel scrolling.
+func (r *Root) treeWheelScroll(ev ui.InputEvent, count int) bool {
+	if ev.Kind != ui.InputScroll || ev.Precise || ev.Momentum || ev.DY == 0 || count == 0 {
+		return false
+	}
+	first, last := r.treeList.Visible()
+	if last < first {
+		return false
+	}
+	step := 3
+	if ev.DY < 0 {
+		step = -3
+	}
+	target := first + step
+	if target < 0 {
+		target = 0
+	}
+	if target >= count {
+		target = count - 1
+	}
+	if target == first {
+		return false
+	}
+	r.treeList.ScrollTo(target, ui.Start)
+	return true
+}
+
 func (r *Root) focusRequest(id string) {
 	req, ok := r.tree.Request(id)
 	if !ok {
