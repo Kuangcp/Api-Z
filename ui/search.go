@@ -130,6 +130,10 @@ func (r *Root) recentOverlay(c *ui.Context) {
 	t := c.Theme()
 	items := r.recentRequests()
 	ui.Modal(c, &r.recentOpen, func() {
+		// Context.Shortcut ignores chords from outside the modal, so the
+		// overlay registers its own window shortcuts while it is visible.
+		c.OnWindowShortcut(ui.Ctrl, ui.KeyTab, func() { r.cycleRecent(1) })
+		c.OnWindowShortcut(ui.Ctrl|ui.Shift, ui.KeyTab, func() { r.cycleRecent(-1) })
 		ui.Text(c, "最近请求").FontSize(15).Bold()
 		ui.Text(c, "Ctrl+Tab 下一个 · Shift+Ctrl+Tab 上一个 · Enter 打开 · Esc 关闭").
 			FontSize(11).TextColor(t.TextMuted)

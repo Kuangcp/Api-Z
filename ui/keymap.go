@@ -160,10 +160,6 @@ func detectChord(c *ui.Context) (string, bool) {
 func (r *Root) handleShortcuts(c *ui.Context) {
 	if r.recentOpen {
 		switch {
-		case c.Shortcut(ui.Ctrl|ui.Shift, ui.KeyTab):
-			r.cycleRecent(-1)
-		case c.Shortcut(ui.Ctrl, ui.KeyTab):
-			r.cycleRecent(1)
 		case c.KeyDown(ui.KeyEnter):
 			r.openRecentSelection()
 		case c.KeyDown(ui.KeyEscape):
