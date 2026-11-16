@@ -195,6 +195,17 @@ func (ed *Editor) openHistory(path string) {
 	}
 	ed.histJSON = false
 	ed.histJSONEd = nil
+	ed.histStreamMode = 0
+	ed.histSelectedEvent = -1
+	ed.histEventIdx = -1
+	ed.histEventEd = nil
+	ed.histEvents = nil
+	ed.histLineEvent = nil
+	ed.histModelLines = nil
+	ed.histAguiRows = nil
+	if resp.IsSSE && body != "" {
+		ed.parseHistorySSE()
+	}
 	ed.root.status = fmt.Sprintf("历史 %d · %dms · %s", resp.Status, resp.DurationMS, app.FormatBytes(resp.SizeBytes))
 }
 
@@ -217,6 +228,21 @@ func (ed *Editor) historyPane(c *ui.Context) {
 			if resp.TPOTMS > 0 {
 				ui.Text(c, fmt.Sprintf("TPOT %dms", resp.TPOTMS)).FontSize(11).TextColor(t.TextMuted)
 			}
+			if resp.IsSSE {
+				modes := []string{"Raw", "Model", "AGUI"}
+				mode := ed.histStreamMode
+				if mode < 0 || mode >= len(modes) {
+					mode = 0
+				}
+				cur := modes[mode]
+				if ui.Select(c, &cur, modes).Label("历史响应视图").Width(110).Changed() {
+					for i, name := range modes {
+						if name == cur {
+							ed.histStreamMode = i
+						}
+					}
+				}
+			}
 			ui.Box(c).Grow(1)
 			if iconButton(c, iconCopy, "复制").Clicked() {
 				c.WriteClipboard(resp.Body)
@@ -230,7 +256,7 @@ func (ed *Editor) historyPane(c *ui.Context) {
 		ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
 			ui.Tabs(c, &ed.RespTab, "Body", "Headers", "Request")
 			ui.Spacer(c)
-			if ed.RespTab == 0 && iconButton(c, iconFormat, "JSON").Clicked() {
+			if ed.RespTab == 0 && ed.histStreamMode == 0 && iconButton(c, iconFormat, "JSON").Clicked() {
 				if ed.histJSONEd == nil {
 					raw := resp.Body
 					var buf bytes.Buffer
@@ -252,20 +278,72 @@ func (ed *Editor) historyPane(c *ui.Context) {
 			ed.historyRequest(c, resp)
 			return
 		}
-		if ed.histJSON && ed.histJSONEd != nil {
+		if ed.histJSON && ed.histJSONEd != nil && ed.histStreamMode == 0 {
 			ed.histJSONEd.Font = ed.root.bodyEditorFont()
 			editor.View(c, ed.histJSONEd).Grow(1).FillWidth()
 			return
 		}
-		ui.List(c, &ed.histList, len(ed.histLines), func(i int) {
+		switch ed.histStreamMode {
+		case 1:
+			ui.List(c, &ed.histModelList, len(ed.histModelLines), func(i int) {
+				line := ed.histModelLines[i]
+				if line == "" {
+					line = " "
+				}
+				ui.Text(c, clipLine(line, 4096)).Font(ed.root.bodyFontFamily("monospace")).
+					FontSize(ed.root.bodyTextSize(12)).SingleLine()
+			}).Grow(1)
+		case 2:
+			ui.List(c, &ed.histAguiList, len(ed.histAguiRows), func(i int) {
+				ed.aguiRow(c, ed.histAguiRows[i], false)
+			}).Grow(1).Padding(10, 12).Gap(10)
+		default:
+			ed.historyRawView(c, resp)
+		}
+	})
+}
+
+func (ed *Editor) historyRawView(c *ui.Context, resp *app.HARResponse) {
+	n := len(ed.histLines)
+	list := func() {
+		ui.List(c, &ed.histList, n, func(i int) {
 			line := ed.histLines[i]
+			event := -1
+			if resp.IsSSE && i < len(ed.histLineEvent) {
+				event = ed.histLineEvent[i]
+			}
+			if event >= 0 {
+				selected := event == ed.histSelectedEvent
+				ed.sseEventRow(c, line, event, selected, func() {
+					if ed.histSelectedEvent == event {
+						ed.histSelectedEvent = -1
+						ed.histEventIdx = -1
+						ed.histEventEd = nil
+					} else {
+						ed.histSelectedEvent = event
+						ed.histEventIdx = -1
+						ed.histEventEd = nil
+					}
+				})
+				return
+			}
 			if line == "" {
 				line = " "
 			}
 			ui.Text(c, clipLine(line, 4096)).Font(ed.root.bodyFontFamily("monospace")).
 				FontSize(ed.root.bodyTextSize(12)).SingleLine()
 		}).Grow(1)
-	})
+	}
+	if resp.IsSSE && ed.histSelectedEvent >= 0 {
+		ed.ensureHistEventEditor()
+	}
+	if ed.histEventEd != nil {
+		ui.SplitVerticalPercent(c, &ed.histEventSplit, list, func() {
+			ed.histEventPanel(c)
+		}).Grow(1)
+	} else {
+		list()
+	}
 }
 
 func (ed *Editor) toggleJSON(sess *app.Session, snap app.SessionSnapshot) {
@@ -330,17 +408,7 @@ func (ed *Editor) rawView(c *ui.Context, sess *app.Session, snap app.SessionSnap
 					event = sess.LineEvent(i)
 				}
 				if event >= 0 {
-					selected := event == ed.SelectedEvent
-					btn := ui.ButtonBase(c).Label("SSE 事件行").Justify(ui.Start).Padding(0, 2).Radius(3)
-					if selected {
-						btn.Background(t.Accent.Alpha(0.18))
-					} else if btn.Hovered() {
-						btn.Background(t.SurfaceHover)
-					}
-					btn.Children(func() {
-						ed.sseLine(c, line)
-					})
-					if btn.Clicked() {
+					ed.sseEventRow(c, line, event, event == ed.SelectedEvent, func() {
 						if ed.SelectedEvent == event {
 							ed.SelectedEvent = -1
 							ed.eventIdx = -1
@@ -350,7 +418,7 @@ func (ed *Editor) rawView(c *ui.Context, sess *app.Session, snap app.SessionSnap
 							ed.eventIdx = -1
 							ed.eventEd = nil
 						}
-					}
+					})
 					return
 				}
 				ui.Text(c, clipLine(line, 4096)).Font(ed.root.bodyFontFamily("monospace")).

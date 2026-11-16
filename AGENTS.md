@@ -106,7 +106,7 @@ api-z 的存在理由就是这条链路。**不要退回全量字符串 + 每帧
 - 响应区固定 Body / Headers / Request 三页签；Headers 同时渲染请求头与响应头，HAR `entry.request.headers`/`_apiX.requestHeadersFullText` 必须保存实际发送头。Request 读取 `Session.Spec()` 并用 `app.FormatHTTP` 展示实际发送内容，HAR 历史读取 request 快照，不要重新拼编辑器原文。
 - 二进制响应用 `Snap.FileName`（Content-Disposition/URL/Content-Type 推导），保存/打开走 `ui/binary.go`，复制文件用 `app.CopyFile`。
 - 原始行用等宽字体、`SingleLine`、`clipLine`；AGUI 文本用分块 markdown。
-- 历史回看只读 HAR；不要假装支持重放。
+- 历史回看只读 HAR；不要假装支持重放。历史 SSE 在 `openHistory` 时解析出 `histEvents/histLineEvent/histModelLines/histAguiRows`，交互与实时 Raw 一致（视图切换、事件高亮、可调高度 JSON 面板）。
 - 代码导出（cURL / Raw HTTP）走 `app/curl.go` 的 `FormatCurl` / `FormatHTTP`，输入必须是发送时的 `httpclient.Spec`（已替换环境、合并 Params、注入 Auth），不要拼编辑器原始文本。
 - Git 同步走 `app/syncservice.go` + `sync/`：共享仓库只写 `api-z/`，根 README 不生成/不修改。格式 v2：`collections/<id>/collection.json` 明文保存集合名/多级目录/Request ID+名称；`settings.enc` 加密集合/目录 meta（Auth、OpenAPI 等）；`requests/<id>.enc` 每请求一个加密文件；`env/environments.enc` 加密环境。未变化明文必须复用已有密文；不支持旧版单集合 `.enc`。
 - `data/` 目录 Push/Pull 走 `app/data_sync.go`：集合 `data/collection/<id>.json`、环境 `data/env/environments.json`；Pull 按集合 id upsert、环境按 id 合并且不删除本地项。UI 动作在 `ui/data_sync.go`。

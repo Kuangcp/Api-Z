@@ -60,7 +60,7 @@ go run . -migrate \
 - 图标：设置/新建集合/导入/清空/环境管理等使用 Lucide 图标按钮；应用图标为 `assets/icon.svg` 生成的 Z 图标（256/512 PNG）。
 - 默认快捷键：`Ctrl+Enter` 发送、`Ctrl+S` 保存、`Ctrl+K` 搜索、`Ctrl+Tab` 最近切换、`Ctrl+N` 新建请求、`Ctrl+W` 关闭标签、`Ctrl+,` 设置。
 - 日志：每次请求记录方法、脱敏 URL、状态、耗时、字节数、SSE 事件数；协程/UI panic 带堆栈写入日志，UI 渲染异常显示兜底提示而非直接退出。
-- HAR 落盘与最近 10 次历史回看。
+- HAR 落盘与最近 10 次历史回看；历史 SSE 同样支持 Raw/Model/AGUI 切换、事件行高亮与可调高度 JSON 详情。
 - api-x 只读识别 + 一次性迁移（SQLite、environments.json、response artifacts）。
 - Postman Collection v2.1 导入/导出：嵌套文件夹、根请求、auth、禁用 Header、raw/urlencoded body、query/params、集合变量与描述；保留 `_api_x_id` 便于回导。
 - cURL 导入/导出：标题栏 cURL 图标或集合/文件夹/Request 右键「解析 cURL」直接读取剪贴板最新命令并创建请求（Request 右键建在其下方；选中 Request 时插到该 Request 下方；选中文件夹则建在其下；否则建在当前集合根）；手动粘贴对话框仍保留；支持 `-X/-H/-d/-u/-b/-A/-e/-G/--json`、`$'...'` 与续行。请求树右键提供「复制 cURL」「复制为 Raw HTTP」（均已应用环境变量与 Auth）。

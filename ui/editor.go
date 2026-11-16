@@ -69,11 +69,22 @@ type Editor struct {
 	saveGen         uint64
 	autoSavePending bool
 
-	hist       *app.HARResponse
-	histLines  []string
-	histList   ui.ListState
-	histJSON   bool
-	histJSONEd *editor.State
+	hist              *app.HARResponse
+	histLines         []string
+	histList          ui.ListState
+	histJSON          bool
+	histJSONEd        *editor.State
+	histStreamMode    int
+	histModelLines    []string
+	histModelList     ui.ListState
+	histAguiRows      []aguiRow
+	histAguiList      ui.ListState
+	histEvents        []httpclient.SSEEvent
+	histLineEvent     []int
+	histSelectedEvent int
+	histEventIdx      int
+	histEventEd       *editor.State
+	histEventSplit    float32
 }
 
 type aguiRow struct {
@@ -87,20 +98,23 @@ type aguiRow struct {
 
 func NewEditor(root *Root, req app.Request) *Editor {
 	ed := &Editor{
-		root:          root,
-		ID:            req.ID,
-		Name:          req.Name,
-		Method:        req.Method,
-		URL:           req.URL,
-		Headers:       req.HeadersText,
-		Params:        req.ParamsText,
-		Body:          req.BodyText,
-		MetaJSON:      req.MetaJSON,
-		Auth:          app.ParseAuth(req.MetaJSON),
-		md:            markdown.Options{},
-		SelectedEvent: -1,
-		EventSplit:    70,
-		eventIdx:      -1,
+		root:              root,
+		ID:                req.ID,
+		Name:              req.Name,
+		Method:            req.Method,
+		URL:               req.URL,
+		Headers:           req.HeadersText,
+		Params:            req.ParamsText,
+		Body:              req.BodyText,
+		MetaJSON:          req.MetaJSON,
+		Auth:              app.ParseAuth(req.MetaJSON),
+		md:                markdown.Options{},
+		SelectedEvent:     -1,
+		EventSplit:        70,
+		eventIdx:          -1,
+		histSelectedEvent: -1,
+		histEventIdx:      -1,
+		histEventSplit:    70,
 	}
 	ed.paramsKV.Mode = 1
 	ed.headersKV.Mode = 1
@@ -410,7 +424,11 @@ func (ed *Editor) buildSpec() httpclient.Spec {
 	if inferBodyKind(ed.Headers) == bodyNone {
 		body = ""
 	}
-	return app.BuildSpec(ed.Method, ed.URL, ed.Headers, ed.Params, body, auth, ed.root.env.Map())
+	spec := app.BuildSpec(ed.Method, ed.URL, ed.Headers, ed.Params, body, auth, ed.root.env.Map())
+	readMS, totalMS := ed.root.requestTimeoutsMS()
+	spec.ReadTimeout = time.Duration(readMS) * time.Millisecond
+	spec.RequestTimeout = time.Duration(totalMS) * time.Millisecond
+	return spec
 }
 
 func (ed *Editor) send() {
