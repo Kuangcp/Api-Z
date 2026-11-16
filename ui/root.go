@@ -42,12 +42,15 @@ type Root struct {
 	store  *app.Store
 	client *httpclient.Client
 
-	tree     app.Tree
-	expanded map[string]bool
-	treeList ui.ListState
-	search   string
-	selected string
-	reveal   string
+	tree      app.Tree
+	expanded  map[string]bool
+	rowsCache []treeRow
+	rowsKey   string
+	rowsReady bool
+	treeList  ui.ListState
+	search    string
+	selected  string
+	reveal    string
 
 	activeCollection string
 	colMRU           []string
@@ -392,7 +395,7 @@ func (r *Root) treeRow(c *ui.Context, row treeRow) {
 			}
 			text(methodLabel(row.method), r.treeMethodSize()).Bold().
 				TextColor(methodColor(c, row.method)).Width(r.treeMethodWidth()).SingleLine()
-			ui.Box(c).Width(6)
+			ui.Box(c).Width(3)
 			text(row.name, r.treeTextSize(12.5)).SingleLine().Grow(1)
 		}
 	})
@@ -452,15 +455,63 @@ func methodColor(c *ui.Context, method string) ui.Color {
 
 func (r *Root) visibleRows() []treeRow {
 	search := strings.ToLower(strings.TrimSpace(r.search))
+	key := r.rowsSignature(search)
+	if r.rowsReady && key == r.rowsKey {
+		return r.rowsCache
+	}
 	col, ok := r.tree.Collection(r.activeCollection)
 	if !ok {
+		r.rowsCache, r.rowsKey, r.rowsReady = nil, key, true
 		return nil
 	}
 	rows, matched := r.collectionRows(col, 0, search)
 	if search != "" && !matched {
-		return nil
+		rows = nil
 	}
+	r.rowsCache, r.rowsKey, r.rowsReady = rows, key, true
 	return rows
+}
+
+// rowsSignature covers everything that changes the visible tree rows. The
+// signature costs only an iteration over the (small) expanded id set, while
+// avoiding a full N-request rebuild on every scroll frame.
+func (r *Root) rowsSignature(search string) string {
+	var b strings.Builder
+	b.WriteString(r.activeCollection)
+	b.WriteByte('|')
+	b.WriteString(search)
+	b.WriteByte('|')
+	for _, c := range r.tree.Collections {
+		if r.expanded["c:"+c.ID] {
+			b.WriteString(c.ID)
+			b.WriteByte(',')
+		}
+	}
+	b.WriteByte('|')
+	for _, f := range r.tree.Folders {
+		if r.expanded["f:"+f.ID] {
+			b.WriteString(f.ID)
+			b.WriteByte(',')
+		}
+	}
+	return b.String()
+}
+
+func (r *Root) invalidateTreeRows() {
+	r.rowsReady = false
+	r.rowsKey = ""
+}
+
+func (r *Root) updateTreeRequestMethod(id, method string) {
+	for i := range r.tree.Requests {
+		if r.tree.Requests[i].ID == id {
+			if r.tree.Requests[i].Method != method {
+				r.tree.Requests[i].Method = method
+				r.invalidateTreeRows()
+			}
+			return
+		}
+	}
 }
 
 func (r *Root) collectionRows(col app.Collection, depth int, search string) ([]treeRow, bool) {
@@ -549,6 +600,7 @@ func (r *Root) reloadTree() {
 		return
 	}
 	r.tree = tree
+	r.invalidateTreeRows()
 	r.ensureActiveCollection()
 }
 

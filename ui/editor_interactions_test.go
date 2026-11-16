@@ -197,3 +197,27 @@ func TestNoBodyKeepsContentButDisablesAndSkipsSend(t *testing.T) {
 		t.Fatalf("no-body request sends %q", spec.Body)
 	}
 }
+
+func TestMethodChangeUpdatesTree(t *testing.T) {
+	root, ed, tt := openEditorTest(t, "", "")
+	if err := tt.Click("方法"); err != nil {
+		t.Fatalf("method select: %v", err)
+	}
+	tt.Frame()
+	if err := tt.Click("PATCH"); err != nil {
+		t.Fatalf("method option: %v", err)
+	}
+	tt.Frame()
+	if ed.Method != "PATCH" {
+		t.Fatalf("editor method = %q", ed.Method)
+	}
+	req, ok := root.tree.Request(ed.ID)
+	if !ok || req.Method != "PATCH" {
+		t.Fatalf("tree request = %#v", req)
+	}
+	for _, row := range root.visibleRows() {
+		if row.id == ed.ID && row.method != "PATCH" {
+			t.Fatalf("visible row method = %q", row.method)
+		}
+	}
+}

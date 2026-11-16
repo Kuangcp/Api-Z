@@ -271,6 +271,7 @@ func (ed *Editor) requestHeader(c *ui.Context) {
 		})
 		if methodSel.Trigger.Changed() {
 			ed.Dirty = true
+			ed.root.updateTreeRequestMethod(ed.ID, ed.Method)
 		}
 		url := ed.root.urlInput(c, &ed.URL)
 		urlChanged := url.Changed()
