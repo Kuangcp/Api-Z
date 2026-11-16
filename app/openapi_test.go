@@ -216,6 +216,194 @@ func TestRefreshOpenAPICollection(t *testing.T) {
 	}
 }
 
+func openAPITestStore(t *testing.T) (*Store, string) {
+	t.Helper()
+	paths := PathsAt(t.TempDir(), t.TempDir())
+	_ = paths.Ensure()
+	store, err := OpenStore(paths.DBPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	id, err := store.CreateCollection("Demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := ParseOpenAPI(openAPIFixture, "http://api.test/v3/api-docs", "Demo", id, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.MergeOpenAPICollection(id, p.Portable); err != nil {
+		t.Fatal(err)
+	}
+	return store, id
+}
+
+func openAPITestRequest(t *testing.T, tree Tree, name string) Request {
+	t.Helper()
+	for _, r := range tree.Requests {
+		if r.Name == name {
+			return r
+		}
+	}
+	t.Fatalf("request %q not found", name)
+	return Request{}
+}
+
+func openAPITestMerge(t *testing.T, store *Store, collectionID, fixture string) {
+	t.Helper()
+	p, err := ParseOpenAPI(fixture, "http://api.test/v3/api-docs", "Demo", collectionID, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.MergeOpenAPICollection(collectionID, p.Portable); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRefreshOpenAPIPreservesPathParamEdit(t *testing.T) {
+	store, collectionID := openAPITestStore(t)
+	tree, _ := store.LoadTree()
+	req := openAPITestRequest(t, tree, "Get Pet")
+	req.URL = "http://api.test/pets/42"
+	if err := store.SaveRequest(req); err != nil {
+		t.Fatal(err)
+	}
+	before := len(tree.Requests)
+
+	openAPITestMerge(t, store, collectionID, openAPIFixture)
+	tree, _ = store.LoadTree()
+	if len(tree.Requests) != before {
+		t.Fatalf("requests = %d, want %d; refresh must not add a server copy", len(tree.Requests), before)
+	}
+	got, ok := tree.Request(req.ID)
+	if !ok || got.URL != "http://api.test/pets/42" {
+		t.Fatalf("path param edit lost: %#v", got)
+	}
+	if !strings.Contains(got.MetaJSON, `"path":"/pets/{id}"`) {
+		t.Fatalf("openapi identity lost: %s", got.MetaJSON)
+	}
+}
+
+func TestMergeOpenAPIAfterRequestMovedAcrossCollections(t *testing.T) {
+	store, collectionID := openAPITestStore(t)
+	targetID, err := store.CreateCollection("Other")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tree, _ := store.LoadTree()
+	req := openAPITestRequest(t, tree, "Get Pet")
+	if err := store.MoveNodeTo(NodeRequest, req.ID, targetID, ""); err != nil {
+		t.Fatal(err)
+	}
+	// An editor opened before the move still holds the old openapi metadata;
+	// autosave must not reattach it.
+	req.HeadersText = "X-Local: 1"
+	req.URL = "http://api.test/pets/42"
+	if err := store.SaveRequest(req); err != nil {
+		t.Fatal(err)
+	}
+	tree, _ = store.LoadTree()
+	moved, _ := tree.Request(req.ID)
+	if strings.Contains(moved.MetaJSON, `"openapi"`) {
+		t.Fatalf("moved request keeps openapi binding: %s", moved.MetaJSON)
+	}
+	if moved.HeadersText != "X-Local: 1" || moved.URL != "http://api.test/pets/42" {
+		t.Fatalf("stale save did not keep local fields: %#v", moved)
+	}
+
+	openAPITestMerge(t, store, collectionID, openAPIFixture)
+	tree, _ = store.LoadTree()
+	if len(tree.Requests) != 4 {
+		t.Fatalf("requests = %d, want 4 (3 restored + moved copy)", len(tree.Requests))
+	}
+	openAPITestMerge(t, store, collectionID, openAPIFixture)
+	tree, _ = store.LoadTree()
+	if len(tree.Requests) != 4 {
+		t.Fatalf("second refresh duplicated requests: %d", len(tree.Requests))
+	}
+}
+
+func TestMergeOpenAPIAfterFolderMovedAcrossCollections(t *testing.T) {
+	store, collectionID := openAPITestStore(t)
+	targetID, err := store.CreateCollection("Other")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tree, _ := store.LoadTree()
+	var folder Folder
+	for _, f := range tree.Folders {
+		if f.Name == "Pets" {
+			folder = f
+		}
+	}
+	if folder.ID == "" {
+		t.Fatal("Pets folder not imported")
+	}
+	if err := store.MoveNodeTo(NodeFolder, folder.ID, targetID, ""); err != nil {
+		t.Fatal(err)
+	}
+	openAPITestMerge(t, store, collectionID, openAPIFixture)
+	openAPITestMerge(t, store, collectionID, openAPIFixture)
+	tree, _ = store.LoadTree()
+	folders, requests := 0, 0
+	for _, f := range tree.Folders {
+		if f.CollectionID == collectionID {
+			folders++
+		}
+	}
+	for _, r := range tree.Requests {
+		if r.CollectionID == collectionID {
+			requests++
+		}
+	}
+	if folders != 2 || requests != 3 {
+		t.Fatalf("restored collection = %d folders / %d requests, want 2/3", folders, requests)
+	}
+}
+
+func TestMergeOpenAPIDuplicateRequest(t *testing.T) {
+	store, collectionID := openAPITestStore(t)
+	tree, _ := store.LoadTree()
+	req := openAPITestRequest(t, tree, "Get Pet")
+	copyID, err := store.DuplicateRequest(req.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tree, _ = store.LoadTree()
+	copied, _ := tree.Request(copyID)
+	if strings.Contains(copied.MetaJSON, `"openapi"`) {
+		t.Fatalf("duplicate keeps openapi binding: %s", copied.MetaJSON)
+	}
+	openAPITestMerge(t, store, collectionID, openAPIFixture)
+	openAPITestMerge(t, store, collectionID, openAPIFixture)
+	tree, _ = store.LoadTree()
+	if len(tree.Requests) != 4 {
+		t.Fatalf("requests = %d, want 4", len(tree.Requests))
+	}
+}
+
+func TestSaveRequestKeepsRefreshedOpenAPIMeta(t *testing.T) {
+	store, _ := openAPITestStore(t)
+	tree, _ := store.LoadTree()
+	req := openAPITestRequest(t, tree, "Get Pet")
+	req.BodyText = `{"local":true}`
+	req.MetaJSON = `{"auth":{"type":"bearer"}}`
+	if err := store.SaveRequest(req); err != nil {
+		t.Fatal(err)
+	}
+	got, ok, err := store.GetRequest(req.ID)
+	if err != nil || !ok {
+		t.Fatalf("get request: %v %v", ok, err)
+	}
+	if !strings.Contains(got.MetaJSON, `"openapi"`) || !strings.Contains(got.MetaJSON, `"syncKey":"GET /pets/{}"`) {
+		t.Fatalf("refresh metadata was overwritten: %s", got.MetaJSON)
+	}
+	if ParseAuth(got.MetaJSON).Type != "bearer" {
+		t.Fatalf("local auth lost: %s", got.MetaJSON)
+	}
+}
+
 func TestSetCollectionOpenAPIBinding(t *testing.T) {
 	meta := `{"auth":{"type":"bearer"},"color":"#123456","openapi":{"sourceUrl":"https://old","baseUrl":"https://api","root":{"mode":"baseUrl"}}}`
 	got := SetCollectionOpenAPI(meta, "localhost:8080/v3/api-docs", &OpenAPIRoot{Mode: OpenAPIRootEnv, EnvKey: "host"})

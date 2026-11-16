@@ -524,7 +524,31 @@ func openAPIFolderMetaJSON(sourceURL, tag string) string {
 		"sourceUrl": sourceURL,
 		"kind":      "tag",
 		"name":      tag,
+		"syncKey":   "tag:" + tag,
 	}})
+}
+
+// openAPIFolderKeys returns the stable identities used to reattach a folder
+// whose deterministic ID was moved to another collection.
+func openAPIFolderKeys(metaJSON string) []string {
+	var meta struct {
+		OpenAPI struct {
+			SyncKey string `json:"syncKey"`
+			Kind    string `json:"kind"`
+			Name    string `json:"name"`
+		} `json:"openapi"`
+	}
+	if json.Unmarshal([]byte(strings.TrimSpace(metaJSON)), &meta) != nil {
+		return nil
+	}
+	var keys []string
+	if meta.OpenAPI.SyncKey != "" {
+		keys = append(keys, "sync:"+meta.OpenAPI.SyncKey)
+	}
+	if meta.OpenAPI.Kind != "" && meta.OpenAPI.Name != "" {
+		keys = append(keys, "legacy:"+meta.OpenAPI.Kind+":"+meta.OpenAPI.Name)
+	}
+	return keys
 }
 
 func openAPIRequestMetaJSON(sourceURL, tag, method, path, operationID string) string {
@@ -584,7 +608,49 @@ func mergeOpenAPICollectionMeta(oldMeta, newMeta string) string {
 	return string(b)
 }
 
-func mergeOpenAPIRequestMeta(oldMeta, newMeta string) string {
+// DropOpenAPIBinding removes only the openapi section, keeping auth and other
+// local metadata. Used when a node is copied or moved to another collection.
+func DropOpenAPIBinding(metaJSON string) string {
+	meta := map[string]json.RawMessage{}
+	if json.Unmarshal([]byte(strings.TrimSpace(metaJSON)), &meta) != nil || meta == nil {
+		return metaJSON
+	}
+	if _, ok := meta["openapi"]; !ok {
+		return metaJSON
+	}
+	delete(meta, "openapi")
+	b, err := json.Marshal(meta)
+	if err != nil {
+		return metaJSON
+	}
+	return string(b)
+}
+
+// KeepStoredOpenAPIMeta makes the stored OpenAPI section authoritative for a
+// normal request save. savedMeta may be an editor snapshot captured before a
+// refresh or a cross-collection move detached the request.
+func KeepStoredOpenAPIMeta(savedMeta, storedMeta string) string {
+	incoming := map[string]json.RawMessage{}
+	if json.Unmarshal([]byte(strings.TrimSpace(savedMeta)), &incoming) != nil || incoming == nil {
+		incoming = map[string]json.RawMessage{}
+	}
+	stored := map[string]json.RawMessage{}
+	_ = json.Unmarshal([]byte(strings.TrimSpace(storedMeta)), &stored)
+	if raw, ok := stored["openapi"]; ok {
+		incoming["openapi"] = raw
+	} else {
+		delete(incoming, "openapi")
+	}
+	b, err := json.Marshal(incoming)
+	if err != nil {
+		return savedMeta
+	}
+	return string(b)
+}
+
+// MergeOpenAPIRequestMeta copies the OpenAPI section of newMeta into oldMeta
+// while keeping local metadata such as auth and color.
+func MergeOpenAPIRequestMeta(oldMeta, newMeta string) string {
 	old := map[string]any{}
 	_ = json.Unmarshal([]byte(strings.TrimSpace(oldMeta)), &old)
 	if old == nil {

@@ -161,6 +161,9 @@ func (s *Store) DuplicateRequest(id string) (string, error) {
 	}
 	newRequestID := newID()
 	now := time.Now().UnixMilli()
+	// A copy is a new local request. Keeping openapi keys would let a later
+	// refresh match the copy instead of the imported request.
+	meta = DropOpenAPIBinding(meta)
 	insertAt := sortOrder + 1
 	if folder.Valid && folder.String != "" {
 		if _, err := tx.Exec(`UPDATE requests SET sort_order = sort_order + 1, updated_at = ?
@@ -355,10 +358,10 @@ func (s *Store) MoveNodeTo(kind, id, collectionID, parentFolderID string) error 
 
 	switch kind {
 	case NodeRequest:
-		var oldCollection string
+		var oldCollection, oldMeta string
 		var oldFolder sql.NullString
-		if err := tx.QueryRow(`SELECT collection_id, folder_id FROM requests WHERE id = ?`, id).
-			Scan(&oldCollection, &oldFolder); err != nil {
+		if err := tx.QueryRow(`SELECT collection_id, folder_id, meta_json FROM requests WHERE id = ?`, id).
+			Scan(&oldCollection, &oldFolder, &oldMeta); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return errors.New("请求不存在")
 			}
@@ -374,9 +377,12 @@ func (s *Store) MoveNodeTo(kind, id, collectionID, parentFolderID string) error 
 		if err != nil {
 			return err
 		}
+		if oldCollection != collectionID {
+			oldMeta = DropOpenAPIBinding(oldMeta)
+		}
 		if _, err := tx.Exec(`UPDATE requests SET collection_id = ?, folder_id = NULLIF(?, ''),
-			sort_order = ?, updated_at = ? WHERE id = ?`,
-			collectionID, parentFolderID, sortOrder, time.Now().UnixMilli(), id); err != nil {
+			sort_order = ?, updated_at = ?, meta_json = ? WHERE id = ?`,
+			collectionID, parentFolderID, sortOrder, time.Now().UnixMilli(), oldMeta, id); err != nil {
 			return err
 		}
 	case NodeFolder:
@@ -443,11 +449,56 @@ func (s *Store) MoveNodeTo(kind, id, collectionID, parentFolderID string) error 
 				id, collectionID); err != nil {
 				return err
 			}
+			// The moved subtree no longer belongs to this OpenAPI document.
+			if err := detachOpenAPIBindings(tx, "folders",
+				sub+`SELECT id, meta_json FROM folders WHERE id IN (SELECT id FROM sub)`, id); err != nil {
+				return err
+			}
+			if err := detachOpenAPIBindings(tx, "requests",
+				sub+`SELECT id, meta_json FROM requests WHERE folder_id IN (SELECT id FROM sub)`, id); err != nil {
+				return err
+			}
 		}
 	default:
 		return fmt.Errorf("unknown node kind %q", kind)
 	}
 	return tx.Commit()
+}
+
+func detachOpenAPIBindings(tx *sql.Tx, table, query string, args ...any) error {
+	rows, err := tx.Query(query, args...)
+	if err != nil {
+		return err
+	}
+	type node struct {
+		id   string
+		meta string
+	}
+	var nodes []node
+	for rows.Next() {
+		var n node
+		if err := rows.Scan(&n.id, &n.meta); err != nil {
+			rows.Close()
+			return err
+		}
+		nodes = append(nodes, n)
+	}
+	if err := rows.Close(); err != nil {
+		return err
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for _, n := range nodes {
+		meta := DropOpenAPIBinding(n.meta)
+		if meta == n.meta {
+			continue
+		}
+		if _, err := tx.Exec(`UPDATE `+table+` SET meta_json = ? WHERE id = ?`, meta, n.id); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func validateTargetFolder(tx *sql.Tx, collectionID, folderID string) error {

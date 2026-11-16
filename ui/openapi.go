@@ -142,6 +142,12 @@ func (r *Root) refreshOpenAPICollection(collectionID string) (app.OpenAPIMergeSt
 }
 
 func (r *Root) refreshOpenAPIAsync(collectionID string) {
+	// Save dirty editors first so the merge sees the user's latest edits and
+	// their autosaves cannot race the refresh with an older snapshot.
+	if err := r.saveDirtyEditors(); err != nil {
+		r.err = "刷新前保存请求失败: " + err.Error()
+		return
+	}
 	win := r.win
 	if win == nil {
 		if stats, err := r.refreshOpenAPICollection(collectionID); err == nil {
@@ -157,14 +163,66 @@ func (r *Root) refreshOpenAPIAsync(collectionID string) {
 	})
 }
 
+func (r *Root) saveDirtyEditors() error {
+	for _, ed := range r.tabs {
+		if !ed.Dirty {
+			continue
+		}
+		if err := ed.autoSaveNow(); err != nil {
+			return fmt.Errorf("%s: %w", ed.Name, err)
+		}
+	}
+	return nil
+}
+
 func (r *Root) afterOpenAPIRefresh(collectionID string, stats app.OpenAPIMergeStats, err error) {
 	if err != nil {
 		r.err = "OpenAPI 刷新失败: " + err.Error()
 		return
 	}
+	selected := r.selected
 	r.expanded["c:"+collectionID] = true
 	r.reloadTree()
 	r.activateCollection(collectionID)
+	if r.treeSelectionInCollection(selected, collectionID) {
+		r.selected = selected
+	}
+	r.syncEditorsAfterOpenAPIRefresh(collectionID)
 	r.status = fmt.Sprintf("OpenAPI 已刷新：新增 %d / 更新 %d 个接口", stats.Added, stats.Updated)
 	r.err = ""
+}
+
+func (r *Root) treeSelectionInCollection(selected, collectionID string) bool {
+	switch {
+	case selected == "c:"+collectionID:
+		return true
+	case strings.HasPrefix(selected, "f:"):
+		folder, ok := r.folderByID(strings.TrimPrefix(selected, "f:"))
+		return ok && folder.CollectionID == collectionID
+	case selected != "":
+		req, ok := r.tree.Request(selected)
+		return ok && req.CollectionID == collectionID
+	}
+	return false
+}
+
+// syncEditorsAfterOpenAPIRefresh keeps open request tabs consistent with the
+// merged rows. Dirty tabs keep their editable fields but adopt the new
+// server-owned OpenAPI metadata so the next autosave cannot roll it back.
+func (r *Root) syncEditorsAfterOpenAPIRefresh(collectionID string) {
+	for _, ed := range r.tabs {
+		req, ok := r.tree.Request(ed.ID)
+		if !ok || req.CollectionID != collectionID {
+			continue
+		}
+		if ed.Dirty {
+			ed.MetaJSON = app.MergeOpenAPIRequestMeta(ed.MetaJSON, req.MetaJSON)
+			ed.Auth = app.ParseAuth(ed.MetaJSON)
+			continue
+		}
+		ed.Name = req.Name
+		ed.Method = req.Method
+		ed.MetaJSON = req.MetaJSON
+		ed.Auth = app.ParseAuth(req.MetaJSON)
+	}
 }

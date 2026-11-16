@@ -228,7 +228,21 @@ func (s *Store) GetRequest(id string) (Request, bool, error) {
 func (s *Store) SaveRequest(r Request) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	_, err := s.db.Exec(`UPDATE requests SET name = ?, method = ?, url = ?, headers_text = ?,
+	var storedMeta string
+	err := s.db.QueryRow(`SELECT meta_json FROM requests WHERE id = ?`, r.ID).Scan(&storedMeta)
+	switch {
+	case err == nil:
+		// The openapi section is server-owned. An editor opened before a
+		// refresh or cross-collection move must not write its stale copy back
+		// on autosave.
+		r.MetaJSON = KeepStoredOpenAPIMeta(r.MetaJSON, storedMeta)
+	case errors.Is(err, sql.ErrNoRows):
+		// Preserve the old UPDATE semantics for callers that no longer have
+		// the row; the UPDATE below is a no-op.
+	case err != nil:
+		return err
+	}
+	_, err = s.db.Exec(`UPDATE requests SET name = ?, method = ?, url = ?, headers_text = ?,
 		params_text = ?, body_text = ?, updated_at = ?, meta_json = ? WHERE id = ?`,
 		r.Name, r.Method, r.URL, r.HeadersText, r.ParamsText, r.BodyText,
 		time.Now().UnixMilli(), r.MetaJSON, r.ID)

@@ -102,3 +102,71 @@ func TestOpenAPIImportDialog(t *testing.T) {
 		t.Fatalf("default name = %q", root.openAPIName)
 	}
 }
+
+func TestOpenAPIRefreshKeepsEditorEditsAndMeta(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, uiOpenAPIFixture)
+	}))
+	defer srv.Close()
+
+	paths := app.PathsAt(t.TempDir(), t.TempDir())
+	_ = paths.Ensure()
+	store, _ := app.OpenStore(paths.DBPath)
+	defer store.Close()
+	root := NewRoot(paths, store, app.Tree{}, app.EnvState{Version: 1})
+	tt := ui.NewTester(root.View, 1200, 800)
+	tt.Frame()
+
+	id, _, err := root.importOpenAPIText(uiOpenAPIFixture, srv.URL, "Demo", &app.OpenAPIRoot{Mode: app.OpenAPIRootBaseURL})
+	if err != nil {
+		t.Fatal(err)
+	}
+	root.reloadTree()
+	var req app.Request
+	for _, r := range root.tree.Requests {
+		if r.Name == "Get Pet" {
+			req = r
+		}
+	}
+	if req.ID == "" {
+		t.Fatal("Get Pet not imported")
+	}
+	root.openRequest(req.ID)
+	ed := root.tabs[0]
+	staleMeta := ed.MetaJSON
+	ed.URL = "http://api.test/pets/42"
+	ed.Dirty = true
+
+	root.refreshOpenAPIAsync(id)
+	if len(root.tree.Requests) != 2 {
+		t.Fatalf("requests = %d, want 2 (no server copy)", len(root.tree.Requests))
+	}
+	if ed.URL != "http://api.test/pets/42" || ed.Dirty {
+		t.Fatalf("editor after refresh = url %q dirty %v", ed.URL, ed.Dirty)
+	}
+	if root.selected != req.ID {
+		t.Fatalf("selection after refresh = %q, want %q", root.selected, req.ID)
+	}
+	if !strings.Contains(ed.MetaJSON, `"syncKey":"GET /pets/{}"`) {
+		t.Fatalf("editor meta = %s", ed.MetaJSON)
+	}
+
+	// Simulate an autosave snapshot captured before the refresh.
+	ed.MetaJSON = staleMeta
+	ed.Headers = "X-Local: 1"
+	ed.Dirty = true
+	if err := ed.autoSaveNow(); err != nil {
+		t.Fatal(err)
+	}
+	got, ok, err := store.GetRequest(req.ID)
+	if err != nil || !ok {
+		t.Fatalf("get request: %v %v", ok, err)
+	}
+	if !strings.Contains(got.MetaJSON, `"syncKey":"GET /pets/{}"`) {
+		t.Fatalf("stale autosave removed openapi meta: %s", got.MetaJSON)
+	}
+	if got.HeadersText != "X-Local: 1" {
+		t.Fatalf("header edit lost: %q", got.HeadersText)
+	}
+}
