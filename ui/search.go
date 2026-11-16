@@ -85,12 +85,13 @@ func (r *Root) recentRequests() []app.Request {
 	return out
 }
 
-func (r *Root) openRecentOverlay(reverse bool) {
+func (r *Root) openRecentOverlay(reverse bool, mods ui.Modifiers) {
 	items := r.recentRequests()
 	if len(items) == 0 {
 		r.status = "暂无最近请求"
 		return
 	}
+	r.recentMods = mods & (ui.Ctrl | ui.Alt | ui.Super)
 	r.recentSel = 1
 	if reverse || len(items) == 1 {
 		r.recentSel = len(items) - 1
@@ -119,6 +120,7 @@ func (r *Root) openRecentSelection() {
 	}
 	id := items[r.recentSel].ID
 	r.recentOpen = false
+	r.recentMods = 0
 	r.openRequest(id)
 	r.focusRequest(id)
 }
@@ -135,7 +137,7 @@ func (r *Root) recentOverlay(c *ui.Context) {
 		c.OnWindowShortcut(ui.Ctrl, ui.KeyTab, func() { r.cycleRecent(1) })
 		c.OnWindowShortcut(ui.Ctrl|ui.Shift, ui.KeyTab, func() { r.cycleRecent(-1) })
 		ui.Text(c, "最近请求").FontSize(15).Bold()
-		ui.Text(c, "Ctrl+Tab 下一个 · Shift+Ctrl+Tab 上一个 · Enter 打开 · Esc 关闭").
+		ui.Text(c, "按住 Ctrl+Tab 循环 · Shift+Ctrl+Tab 反向 · 松开 Ctrl 或 Enter 打开 · Esc 关闭").
 			FontSize(11).TextColor(t.TextMuted)
 		if len(items) == 0 {
 			ui.Text(c, "暂无最近请求").FontSize(12).TextColor(t.TextMuted).Padding(8)
@@ -158,6 +160,7 @@ func (r *Root) recentOverlay(c *ui.Context) {
 		ui.Row(c).Gap(8).Justify(ui.End).Children(func() {
 			if ui.Button(c, "关闭").Clicked() {
 				r.recentOpen = false
+				r.recentMods = 0
 			}
 		})
 	}).Width(700).Height(500)

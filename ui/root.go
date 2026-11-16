@@ -82,6 +82,7 @@ type Root struct {
 	mru          []string
 	recentOpen   bool
 	recentSel    int
+	recentMods   ui.Modifiers
 	recentList   ui.ListState
 	recentScroll bool
 	searchOpen   bool

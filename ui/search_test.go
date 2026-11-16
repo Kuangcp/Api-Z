@@ -180,3 +180,55 @@ func TestRecentOverlayCyclesWithKeyboard(t *testing.T) {
 		t.Fatalf("Enter active = %d open=%v", root.active, root.recentOpen)
 	}
 }
+
+func TestRecentOverlayOpensOnModifierRelease(t *testing.T) {
+	store, paths := collectionTestStore(t)
+	cid, _ := store.CreateCollection("Demo")
+	r0, _ := store.CreateRequest(cid, "", "R0")
+	r1, _ := store.CreateRequest(cid, "", "R1")
+	r2, _ := store.CreateRequest(cid, "", "R2")
+	for _, id := range []string{r0, r1, r2} {
+		_ = store.SaveRequest(app.Request{ID: id, Name: id, Method: "GET", URL: "https://example.com/" + id})
+	}
+	tree, _ := store.LoadTree()
+	root := NewRoot(paths, store, tree, app.EnvState{Version: 1})
+	root.openRequest(r0)
+	root.openRequest(r1)
+	root.openRequest(r2)
+	tt := ui.NewTester(root.View, 1200, 800)
+	tt.Frame()
+
+	tt.HoldModifiers(ui.Ctrl)
+	tt.Key(ui.Ctrl, ui.KeyTab)
+	tt.Frame()
+	if !root.recentOpen || root.recentSel != 1 {
+		t.Fatalf("overlay = open %v sel %d", root.recentOpen, root.recentSel)
+	}
+	tt.Key(ui.Ctrl, ui.KeyTab)
+	tt.Frame()
+	if root.recentSel != 2 {
+		t.Fatalf("Ctrl+Tab sel = %d, want 2", root.recentSel)
+	}
+
+	// Releasing only Shift must not commit; the opening modifier is Ctrl.
+	tt.HoldModifiers(ui.Ctrl | ui.Shift)
+	tt.Key(ui.Ctrl|ui.Shift, ui.KeyTab)
+	tt.Frame()
+	tt.HoldModifiers(ui.Ctrl)
+	tt.Frame()
+	if !root.recentOpen {
+		t.Fatal("Shift release closed the switcher")
+	}
+	if root.recentSel != 1 {
+		t.Fatalf("Shift+Ctrl+Tab sel = %d, want 1", root.recentSel)
+	}
+
+	tt.HoldModifiers(0)
+	tt.Frame()
+	if root.recentOpen {
+		t.Fatal("Ctrl release did not close the switcher")
+	}
+	if root.active < 0 || root.tabs[root.active].ID != r1 {
+		t.Fatalf("Ctrl release active = %d, want R1", root.active)
+	}
+}

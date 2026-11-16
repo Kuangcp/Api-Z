@@ -159,11 +159,18 @@ func detectChord(c *ui.Context) (string, bool) {
 
 func (r *Root) handleShortcuts(c *ui.Context) {
 	if r.recentOpen {
+		// Releasing the modifier that opened the switcher commits the
+		// current selection, matching Ctrl+Tab in browsers/editors.
+		if r.recentMods != 0 && c.Modifiers()&r.recentMods != r.recentMods {
+			r.openRecentSelection()
+			return
+		}
 		switch {
 		case c.KeyDown(ui.KeyEnter):
 			r.openRecentSelection()
 		case c.KeyDown(ui.KeyEscape):
 			r.recentOpen = false
+			r.recentMods = 0
 		}
 		return
 	}
@@ -197,7 +204,7 @@ func (r *Root) runAction(id string, mods ui.Modifiers) {
 		r.searchOpen = true
 		r.globalQuery = ""
 	case "recent":
-		r.openRecentOverlay(mods&ui.Shift != 0)
+		r.openRecentOverlay(mods&ui.Shift != 0, mods)
 	case "new_request":
 		r.newRequestFromSelection()
 	case "close_tab":
