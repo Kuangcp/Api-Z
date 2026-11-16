@@ -121,7 +121,7 @@ api-z 的存在理由就是这条链路。**不要退回全量字符串 + 每帧
 - 窗口为无边框自绘标题栏（`Root.titleBar`，38 DIP）：左侧应用图标 + Api-Z，右侧环境级联菜单/数据目录/设置与窗口按钮；整条 `DragWindow`。窗口底色用 `WindowBackgroundColor(themePrefs)`，圆角用 `WindowCornerRadius`。
 - 环境切换走 `ui/env_menu.go`：按钮显示 `标签 | 环境名`，弹出两级菜单（左标签、右环境），不要退回平铺 `ui.Select`；无环境和“管理环境…”放在左列底部；不再在标题栏重复放环境管理图标。
 - 主窗口用 `StateKey: "main"` + `windowStateStore` 恢复位置/大小/最大化；`session.json` 只存 `lastRequest`，`recent.json` 存最近 Request 的 MRU（最多 50）；打开/切换/关闭 Tab 后调用 `rememberActiveRequest`，缺失时保持空白态。
-- 启动恢复 Request 时必须调用 `revealRequestInTree`：展开所有祖先文件夹并设置 `Root.reveal`，由 sidebar 在 List 构建后 `ScrollTo` 定位；不要在 openRequest 时无条件滚动。
+- 启动恢复/全局搜索/Tab 切换时必须调用 `focusRequest`/`revealRequestInTree` 展开并滚动；从左侧树单击打开 Request 不得设置 `Root.reveal`，也不能因已有 Tab 的 openRequest 分支而滚动。
 - 树 CRUD 走 `app/store_crud.go`；UI 动作/弹窗在 `ui/tree_actions.go`，不要直接拼 SQL。
 - 集合/文件夹设置走 `ui/node_settings.go` + `Store.UpdateNodeMeta`：Auth 用 `app.MergeAuth`，OpenAPI 绑定用 `app.SetCollectionOpenAPI`（保留 auth/color 等其它 meta）；设置弹窗不要直接改数据库。
 - 左侧集合 Tab 由 `ui/collection_tabs.go` 管理：`Root.activeCollection` / `colMRU`，树只渲染当前集合；Tab 放不下时保留最近使用项，其余进「更多集合」下拉。新增集合/导入/OpenAPI 刷新/打开其他集合的请求后必须调用 `activateCollection`。

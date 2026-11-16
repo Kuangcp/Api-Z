@@ -610,8 +610,13 @@ func (r *Root) reloadTree() {
 func (r *Root) openRequest(id string) {
 	for i, ed := range r.tabs {
 		if ed.ID == id {
+			// Selecting a request in the tree must not scroll the tree; only
+			// tab switches and search results explicitly reveal the row.
+			if meta, found := r.tree.Request(id); found {
+				r.activateCollection(meta.CollectionID)
+			}
 			r.active = i
-			r.focusRequest(id)
+			r.selected = id
 			r.touchMRU(id)
 			r.rememberActiveRequest()
 			return
