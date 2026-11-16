@@ -35,7 +35,7 @@ func TestVisibleRowsCached(t *testing.T) {
 	}
 }
 
-func TestTreeWheelScrollsThreeRows(t *testing.T) {
+func TestTreeWheelScrollsFourRows(t *testing.T) {
 	store, paths := collectionTestStore(t)
 	cid, _ := store.CreateCollection("Demo")
 	fid, _ := store.CreateFolder(cid, "", "Many")

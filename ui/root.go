@@ -636,7 +636,7 @@ func (r *Root) openRequest(id string) {
 // focusRequest switches the sidebar to the request's collection, selects it
 // and scrolls the tree to its row. Tab switches call this so the tree follows
 // the active editor.
-// treeWheelScroll makes one mouse-wheel notch move three rows, closer to
+// treeWheelScroll makes one mouse-wheel notch move four rows, closer to
 // browser scrolling than a single row. Trackpad (Precise) input keeps its
 // native pixel scrolling.
 func (r *Root) treeWheelScroll(ev ui.InputEvent, count int) bool {
@@ -647,9 +647,9 @@ func (r *Root) treeWheelScroll(ev ui.InputEvent, count int) bool {
 	if last < first {
 		return false
 	}
-	step := 3
+	step := 4
 	if ev.DY < 0 {
-		step = -3
+		step = -4
 	}
 	target := first + step
 	if target < 0 {
