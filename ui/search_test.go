@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
@@ -44,10 +45,17 @@ func TestRecentSwitchAndGlobalSearch(t *testing.T) {
 
 	tt.Key(ui.Ctrl, ui.KeyTab)
 	tt.Frame()
+	if !root.recentOpen || !tt.HasText("最近请求") {
+		t.Fatalf("recent overlay not open: %v", tt.Texts())
+	}
+	tt.Key(0, ui.KeyEnter)
+	tt.Frame()
 	if root.tabs[root.active].ID != a {
 		t.Fatalf("Ctrl+Tab active = %s, want Alpha", root.tabs[root.active].ID)
 	}
 	tt.Key(ui.Ctrl, ui.KeyTab)
+	tt.Frame()
+	tt.Key(0, ui.KeyEnter)
 	tt.Frame()
 	if root.tabs[root.active].ID != b {
 		t.Fatalf("Ctrl+Tab again active = %s, want Beta", root.tabs[root.active].ID)
@@ -103,5 +111,23 @@ func TestGlobalSearchDefaultsToRecent(t *testing.T) {
 	again := NewRoot(paths, store, tree, app.EnvState{Version: 1})
 	if again.mru[0] != rb {
 		t.Fatalf("persisted mru = %v", again.mru)
+	}
+}
+
+func TestRecentOverlayCapsAtTwenty(t *testing.T) {
+	store, paths := collectionTestStore(t)
+	cid, _ := store.CreateCollection("Demo")
+	var ids []string
+	for i := 0; i < 25; i++ {
+		id, _ := store.CreateRequest(cid, "", fmt.Sprintf("R%02d", i))
+		_ = store.SaveRequest(app.Request{ID: id, Name: fmt.Sprintf("R%02d", i), Method: "GET", URL: "https://example.com"})
+		ids = append(ids, id)
+	}
+	tree, _ := store.LoadTree()
+	root := NewRoot(paths, store, tree, app.EnvState{Version: 1})
+	root.mru = ids
+	items := root.recentRequests()
+	if len(items) != 20 || items[0].ID != ids[0] || items[19].ID != ids[19] {
+		t.Fatalf("recent items = %d", len(items))
 	}
 }

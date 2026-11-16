@@ -79,10 +79,14 @@ type Root struct {
 	dlgName    string
 	dlgErr     string
 
-	mru         []string
-	searchOpen  bool
-	globalQuery string
-	globalList  ui.ListState
+	mru          []string
+	recentOpen   bool
+	recentSel    int
+	recentList   ui.ListState
+	recentScroll bool
+	searchOpen   bool
+	globalQuery  string
+	globalList   ui.ListState
 
 	envOpen  bool
 	envDraft app.EnvState
@@ -226,6 +230,7 @@ func (r *Root) View(c *ui.Context) {
 	})
 	r.dialogs(c)
 	r.globalSearch(c)
+	r.recentOverlay(c)
 	r.envManager(c)
 	r.moveModal(c)
 	r.settingsModal(c)

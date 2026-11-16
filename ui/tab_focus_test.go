@@ -40,6 +40,8 @@ func TestTabSwitchFollowsTree(t *testing.T) {
 
 	tt.Key(ui.Ctrl, ui.KeyTab)
 	tt.Frame()
+	tt.Key(0, ui.KeyEnter)
+	tt.Frame()
 	if root.activeCollection != b || root.selected != rb || root.tabs[root.active].ID != rb {
 		t.Fatalf("after Ctrl+Tab collection=%q selected=%q", root.activeCollection, root.selected)
 	}

@@ -70,21 +70,113 @@ func (r *Root) removeMRU(id string) {
 	r.saveRecentRequests()
 }
 
-// switchRecent is Alt-Tab for requests: the second most recently used tab
-// becomes active, and the two trade places, so repeated Ctrl+Tab toggles.
-func (r *Root) switchRecent() {
-	if len(r.mru) < 2 {
+// recentRequests returns the up-to-20 most recently used requests that
+// still exist, in MRU order.
+func (r *Root) recentRequests() []app.Request {
+	out := make([]app.Request, 0, 20)
+	for _, id := range r.mru {
+		if req, ok := r.tree.Request(id); ok {
+			out = append(out, req)
+			if len(out) == 20 {
+				break
+			}
+		}
+	}
+	return out
+}
+
+func (r *Root) openRecentOverlay(reverse bool) {
+	items := r.recentRequests()
+	if len(items) == 0 {
+		r.status = "暂无最近请求"
 		return
 	}
-	id := r.mru[1]
-	for i, ed := range r.tabs {
-		if ed.ID == id {
-			r.active = i
-			r.focusRequest(id)
-			r.touchMRU(id)
-			r.rememberActiveRequest()
+	r.recentSel = 1
+	if reverse || len(items) == 1 {
+		r.recentSel = len(items) - 1
+	}
+	r.recentList.ScrollIntoView(r.recentSel)
+	r.recentScroll = true
+	r.recentOpen = true
+}
+
+func (r *Root) cycleRecent(delta int) {
+	items := r.recentRequests()
+	if len(items) == 0 {
+		r.recentOpen = false
+		return
+	}
+	r.recentSel = (r.recentSel + delta + len(items)) % len(items)
+	r.recentList.ScrollIntoView(r.recentSel)
+	r.recentScroll = true
+}
+
+func (r *Root) openRecentSelection() {
+	items := r.recentRequests()
+	if r.recentSel < 0 || r.recentSel >= len(items) {
+		r.recentOpen = false
+		return
+	}
+	id := items[r.recentSel].ID
+	r.recentOpen = false
+	r.openRequest(id)
+	r.focusRequest(id)
+}
+
+func (r *Root) recentOverlay(c *ui.Context) {
+	if !r.recentOpen {
+		return
+	}
+	t := c.Theme()
+	items := r.recentRequests()
+	ui.Modal(c, &r.recentOpen, func() {
+		ui.Text(c, "最近请求").FontSize(15).Bold()
+		ui.Text(c, "Ctrl+Tab 下一个 · Shift+Ctrl+Tab 上一个 · Enter 打开 · Esc 关闭").
+			FontSize(11).TextColor(t.TextMuted)
+		if len(items) == 0 {
+			ui.Text(c, "暂无最近请求").FontSize(12).TextColor(t.TextMuted).Padding(8)
 			return
 		}
+		if r.recentSel >= len(items) {
+			r.recentSel = len(items) - 1
+		}
+		if r.recentScroll {
+			r.recentList.ScrollIntoView(r.recentSel)
+			r.recentScroll = false
+		}
+		ui.List(c, &r.recentList, len(items), func(i int) {
+			req := items[i]
+			r.requestResultRow(c, req, i == r.recentSel, func() {
+				r.recentSel = i
+				r.openRecentSelection()
+			})
+		}).Height(360)
+		ui.Row(c).Gap(8).Justify(ui.End).Children(func() {
+			if ui.Button(c, "关闭").Clicked() {
+				r.recentOpen = false
+			}
+		})
+	}).Width(700).Height(500)
+}
+
+func (r *Root) requestResultRow(c *ui.Context, req app.Request, selected bool, onClick func()) {
+	t := c.Theme()
+	btn := ui.ButtonBase(c).Label(req.Method+" "+req.Name).Justify(ui.Start).
+		Padding(4, 8).Radius(5)
+	if selected {
+		btn.Background(t.Accent.Alpha(0.16))
+	} else if btn.Hovered() {
+		btn.Background(t.SurfaceHover)
+	}
+	btn.Children(func() {
+		ui.Text(c, req.Method).FontSize(10).Bold().TextColor(methodColor(c, req.Method)).Width(44)
+		ui.Column(c).Grow(1).Children(func() {
+			ui.Text(c, req.Name).FontSize(12.5).SingleLine()
+			ui.Text(c, req.URL).FontSize(10.5).TextColor(t.TextMuted).SingleLine()
+		})
+	})
+	if btn.Clicked() {
+		onClick()
 	}
 }
 
@@ -133,23 +225,11 @@ func (r *Root) globalSearch(c *ui.Context) {
 		} else {
 			ui.List(c, &r.globalList, len(matches), func(i int) {
 				req := matches[i]
-				btn := ui.ButtonBase(c).Label(req.Method+" "+req.Name).Justify(ui.Start).
-					Padding(4, 8).Radius(5)
-				if btn.Hovered() {
-					btn.Background(t.SurfaceHover)
-				}
-				btn.Children(func() {
-					ui.Text(c, req.Method).FontSize(10).Bold().TextColor(methodColor(c, req.Method)).Width(44)
-					ui.Column(c).Grow(1).Children(func() {
-						ui.Text(c, req.Name).FontSize(12.5).SingleLine()
-						ui.Text(c, req.URL).FontSize(10.5).TextColor(t.TextMuted).SingleLine()
-					})
-				})
-				if btn.Clicked() {
+				r.requestResultRow(c, req, false, func() {
 					r.searchOpen = false
 					r.openRequest(req.ID)
 					r.revealRequestInTree(req.ID)
-				}
+				})
 			}).Height(380)
 		}
 		if input.Submitted() && len(matches) > 0 {

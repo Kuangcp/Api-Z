@@ -158,6 +158,19 @@ func detectChord(c *ui.Context) (string, bool) {
 }
 
 func (r *Root) handleShortcuts(c *ui.Context) {
+	if r.recentOpen {
+		switch {
+		case c.Shortcut(ui.Ctrl|ui.Shift, ui.KeyTab):
+			r.cycleRecent(-1)
+		case c.Shortcut(ui.Ctrl, ui.KeyTab):
+			r.cycleRecent(1)
+		case c.KeyDown(ui.KeyEnter):
+			r.openRecentSelection()
+		case c.KeyDown(ui.KeyEscape):
+			r.recentOpen = false
+		}
+		return
+	}
 	if r.settingsOpen || r.dialogOpen || r.searchOpen || r.moveOpen || r.envOpen || r.recording != "" {
 		return
 	}
@@ -167,13 +180,13 @@ func (r *Root) handleShortcuts(c *ui.Context) {
 			continue
 		}
 		if c.Shortcut(mods, key) {
-			r.runAction(a.ID)
+			r.runAction(a.ID, c.Modifiers())
 			return
 		}
 	}
 }
 
-func (r *Root) runAction(id string) {
+func (r *Root) runAction(id string, mods ui.Modifiers) {
 	switch id {
 	case "send":
 		if ed := r.activeEditor(); ed != nil {
@@ -188,7 +201,7 @@ func (r *Root) runAction(id string) {
 		r.searchOpen = true
 		r.globalQuery = ""
 	case "recent":
-		r.switchRecent()
+		r.openRecentOverlay(mods&ui.Shift != 0)
 	case "new_request":
 		r.newRequestFromSelection()
 	case "close_tab":
