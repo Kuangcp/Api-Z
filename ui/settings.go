@@ -16,18 +16,20 @@ func (r *Root) settingsModal(c *ui.Context) {
 	ui.Modal(c, &r.settingsOpen, func() {
 		ui.Text(c, "设置").FontSize(15).Bold()
 		ui.Tabs(c, &r.settingsTab, "主题", "字体", "请求", "同步", "快捷键")
-		switch r.settingsTab {
-		case 0:
-			r.themeSettings(c, t)
-		case 1:
-			r.fontSettings(c, t)
-		case 2:
-			r.requestSettings(c, t)
-		case 3:
-			r.syncSettings(c, t)
-		default:
-			r.keymapSettings(c, t)
-		}
+		ui.Scroll(c).Height(600).Children(func() {
+			switch r.settingsTab {
+			case 0:
+				r.themeSettings(c, t)
+			case 1:
+				r.fontSettings(c, t)
+			case 2:
+				r.requestSettings(c, t)
+			case 3:
+				r.syncSettings(c, t)
+			default:
+				r.keymapSettings(c, t)
+			}
+		})
 		if r.settingsErr != "" {
 			ui.Text(c, r.settingsErr).FontSize(12).TextColor(t.Danger)
 		}
@@ -37,7 +39,7 @@ func (r *Root) settingsModal(c *ui.Context) {
 				r.settingsOpen = false
 			}
 		})
-	}).Width(780).Height(620)
+	}).Width(820).Height(760)
 }
 
 func (r *Root) themeSettings(c *ui.Context, t *ui.Theme) {
@@ -96,6 +98,13 @@ func (r *Root) themeSettings(c *ui.Context, t *ui.Theme) {
 			r.resetTheme()
 		}
 	})
+	gpu := !r.themePrefs.SoftwareRender
+	if ui.Checkbox(c, &gpu, "启用 GPU 渲染").Changed() {
+		r.themePrefs.SoftwareRender = !gpu
+		r.saveThemePrefs()
+	}
+	ui.Text(c, "关闭后使用 CPU 光栅化，重启 Api-Z 生效；可规避部分 Linux/X11 驱动的黑屏闪烁。").
+		FontSize(11).TextColor(t.TextMuted)
 	ui.Text(c, "预览").FontSize(12).TextColor(t.TextMuted)
 	ui.Row(c).Gap(8).Padding(12).Radius(8).Background(t.Surface).Children(func() {
 		ui.PrimaryButton(c, "主按钮")

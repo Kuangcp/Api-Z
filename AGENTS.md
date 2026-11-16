@@ -131,7 +131,7 @@ api-z 的存在理由就是这条链路。**不要退回全量字符串 + 每帧
 - 主题：MyGo 每帧都会把 Context 主题重置为桌面默认，`applyTheme` 必须每帧 `SetTheme`，不能用 themeKey 跳过；themeKey 只用于 SetZoom 与原生窗口底色。
 - 变量补全：URL/Headers/Params 用 `ui.Popover` + `Element.TextSelection/SetTextSelection`；Body 用 `editor.OnCompletion`。插入格式统一 `{{key}}`，不要在每个输入框里各写一套。
 - 字体：`theme.json` 的 `treeFont/treeFontSize` 只作用于左侧请求树；`bodyFont/bodyFontSize` 作用于请求 Body 编辑器、响应 Raw/Model、JSON/事件编辑器；空字体/0 字号走默认。
-- 主题/字体/缩放/快捷键：持久化到 `<config>/theme.json` / `keymap.json`；`theme.json` 含 `mode`/`accent`/`font`/`scale`（百分比），字体用 draft 字段避免逐键 trim，缩放走 `Context.SetZoom`；动作表在 `ui/keymap.go`，不要在 View 里散写 `c.Shortcut`。录制用 `detectChord`（`Context.KeyDown` + `Modifiers`），冲突时删除旧绑定。
+- 主题/字体/缩放/GPU 渲染/快捷键：持久化到 `<config>/theme.json` / `keymap.json`；关闭 GPU 时 `main` 在首帧前设 `MYGO_GPU=0`，重启生效；`theme.json` 含 `mode`/`accent`/`font`/`scale`（百分比），字体用 draft 字段避免逐键 trim，缩放走 `Context.SetZoom`；动作表在 `ui/keymap.go`，不要在 View 里散写 `c.Shortcut`。录制用 `detectChord`（`Context.KeyDown` + `Modifiers`），冲突时删除旧绑定。
 - 不要用缓存跳过 `SetTheme`：MyGo 每帧重置主题，`applyTheme` 每帧重设；`themeKey` 只控制 SetZoom 和窗口底色。强调色必须是 `#rrggbb`。
 - 环境管理器编辑的是 `Root.envDraft` 深拷贝，按「保存环境」才 `Clean()` 落盘；不要在视图里直接改 `Root.env`。
 - 树节点移动走 `Store.MoveNodeTo`（请求/文件夹，跨集合/层级）；拖拽插入走 `Store.MoveNodeBefore`。文件夹移动必须同步子树的 `collection_id`，并阻止移入自身/子树。UI 在 `ui/move.go` / `ui/tree_drag.go`。

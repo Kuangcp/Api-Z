@@ -11,7 +11,8 @@ func TestThemePrefsRoundTrip(t *testing.T) {
 	dir := t.TempDir()
 	path := ThemePath(dir)
 	p := ThemePrefs{Mode: 2, Accent: "#22c55e", Font: "Noto Sans CJK SC", Scale: 110,
-		TreeFont: "Inter", TreeFontSize: 12, BodyFont: "JetBrains Mono", BodyFontSize: 14}
+		TreeFont: "Inter", TreeFontSize: 12, BodyFont: "JetBrains Mono", BodyFontSize: 14,
+		SoftwareRender: true}
 	if err := SaveThemePrefs(path, p); err != nil {
 		t.Fatal(err)
 	}

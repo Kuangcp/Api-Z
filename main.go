@@ -19,6 +19,16 @@ import (
 //go:embed assets/icon-256.png
 var appIconPNG []byte
 
+// applySoftwareRender turns mygo's GPU renderer off when the theme
+// setting asks for it. mygo reads MYGO_GPU when it makes the first frame's
+// renderer, so setting it before Run is enough; the choice applies on the
+// next launch, as a window keeps the renderer it made.
+func applySoftwareRender(software bool) {
+	if software {
+		_ = os.Setenv("MYGO_GPU", "0")
+	}
+}
+
 func main() {
 	var (
 		showVersion = flag.Bool("version", false, "打印版本后退出")
@@ -96,6 +106,7 @@ func main() {
 	// Remember the main window's bounds and maximized state across launches.
 	mygo.App.SetWindowStateStore(windowStateStore{path: app.WindowStatePath(paths.ConfigDir)})
 	themePrefs := app.LoadThemePrefs(app.ThemePath(paths.ConfigDir))
+	applySoftwareRender(themePrefs.SoftwareRender)
 
 	root := ui.NewRoot(paths, store, tree, env)
 	root.SetAppIconPNG(appIconPNG)

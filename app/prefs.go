@@ -23,6 +23,9 @@ type ThemePrefs struct {
 	TreeFontSize int    `json:"treeFontSize,omitempty"`
 	BodyFont     string `json:"bodyFont,omitempty"`
 	BodyFontSize int    `json:"bodyFontSize,omitempty"`
+
+	// SoftwareRender turns off mygo's GPU renderer; a restart applies it.
+	SoftwareRender bool `json:"softwareRender,omitempty"`
 }
 
 // Theme scale bounds, in percent. Zero means the default.

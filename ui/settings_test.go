@@ -28,8 +28,18 @@ func TestSettingsThemeAndKeymap(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	if !root.settingsOpen || !tt.HasText("主题") || !tt.HasText("快捷键") {
+	if !root.settingsOpen || !tt.HasText("主题") || !tt.HasText("快捷键") || !tt.HasText("启用 GPU 渲染") {
 		t.Fatalf("settings not shown: %v", tt.Texts())
+	}
+	if err := tt.Click("启用 GPU 渲染"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if !root.themePrefs.SoftwareRender {
+		t.Fatalf("GPU switch did not turn off rendering: %+v", root.themePrefs)
+	}
+	if got := app.LoadThemePrefs(root.themePath); !got.SoftwareRender {
+		t.Fatalf("persisted software render: %+v", got)
 	}
 	if err := tt.Click("深色"); err != nil {
 		t.Fatal(err)
