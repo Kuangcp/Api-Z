@@ -1,6 +1,9 @@
 package app
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestNormalizeFormBody(t *testing.T) {
 	cases := map[string]string{
@@ -37,5 +40,28 @@ func TestBuildSpecFormBody(t *testing.T) {
 		`{"msg":"hello world"}`, Auth{Type: "noauth"}, nil)
 	if got := string(json.Body); got != `{"msg":"hello world"}` {
 		t.Fatalf("json body encoded: %q", got)
+	}
+}
+
+func TestNormalizeLegacyLineFormWithReservedCharacters(t *testing.T) {
+	body := "seq: 48961776243138774\naccount: 15774632920\npwd: Abc123456\n" +
+		"protocol: true\nchannel: account\nscope: zktr-hccm\ncaptchaType: forceSkip\n" +
+		"captcha: SFACwjtzNQdy94iIY2PYjdNp0XkT+6KtU/EPcqwZg92StupNyYEq7FSnzYRLVxy6Eccmdo+MGtY7c8jfQz2buA=="
+	got := NormalizeFormBody(body)
+	for _, want := range []string{
+		"seq=48961776243138774",
+		"account=15774632920",
+		"pwd=Abc123456",
+		"protocol=true",
+		"channel=account",
+		"scope=zktr-hccm",
+		"captchaType=forceSkip",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("form body missing %q: %s", want, got)
+		}
+	}
+	if !strings.Contains(got, "captcha=SFACwjtzNQdy94iIY2PYjdNp0XkT%2B6KtU%2FEPcqwZg92StupNyYEq7FSnzYRLVxy6Eccmdo%2BMGtY7c8jfQz2buA%3D%3D") {
+		t.Fatalf("captcha not encoded: %s", got)
 	}
 }

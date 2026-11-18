@@ -50,16 +50,15 @@ func parseKV(text string) ([]kvRow, []string) {
 }
 
 func looksLikeFormLines(body string) bool {
-	if strings.Contains(body, "&") || strings.Contains(body, "=") {
-		return false
-	}
 	found := false
 	for _, line := range strings.Split(body, "\n") {
-		line = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(line), "! "))
+		line = strings.TrimSpace(strings.TrimSuffix(line, "\r"))
 		if line == "" {
 			continue
 		}
-		if !strings.Contains(line, ":") {
+		line = strings.TrimSpace(strings.TrimPrefix(line, "! "))
+		key, _, ok := strings.Cut(line, ":")
+		if !ok || strings.TrimSpace(key) == "" {
 			return false
 		}
 		found = true

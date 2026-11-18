@@ -59,16 +59,15 @@ func NormalizeFormBody(body string) string {
 // looksLikeFormLines supports bodies typed as "key: value" lines before the
 // form table existed. Encoded key=value pairs never need this conversion.
 func looksLikeFormLines(body string) bool {
-	if strings.Contains(body, "&") || strings.Contains(body, "=") {
-		return false
-	}
 	found := false
 	for _, line := range strings.Split(body, "\n") {
-		line = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(line), "! "))
+		line = strings.TrimSpace(strings.TrimSuffix(line, "\r"))
 		if line == "" {
 			continue
 		}
-		if !strings.Contains(line, ":") {
+		line = strings.TrimSpace(strings.TrimPrefix(line, "! "))
+		key, _, ok := strings.Cut(line, ":")
+		if !ok || strings.TrimSpace(key) == "" {
 			return false
 		}
 		found = true

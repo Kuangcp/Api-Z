@@ -260,3 +260,30 @@ func TestFormBodyFollowsContentTypeHeader(t *testing.T) {
 		t.Fatalf("form table not shown: %v", tt.Texts())
 	}
 }
+
+func TestFormBodyParsesLegacyLinesWithBase64(t *testing.T) {
+	body := "seq: 48961776243138774\naccount: 15774632920\npwd: Abc123456\n" +
+		"protocol: true\nchannel: account\nscope: zktr-hccm\ncaptchaType: forceSkip\n" +
+		"captcha: SFACwjtzNQdy94iIY2PYjdNp0XkT+6KtU/EPcqwZg92StupNyYEq7FSnzYRLVxy6Eccmdo+MGtY7c8jfQz2buA=="
+	_, ed, tt := openEditorTest(t, "Content-Type: application/x-www-form-urlencoded", body)
+	tt.Frame()
+	if len(ed.formKV.Rows) != 8 {
+		t.Fatalf("form rows = %d: %#v", len(ed.formKV.Rows), ed.formKV.Rows)
+	}
+	if got := ed.formKV.Rows[7]; got.Key != "captcha" ||
+		got.Value != "SFACwjtzNQdy94iIY2PYjdNp0XkT+6KtU/EPcqwZg92StupNyYEq7FSnzYRLVxy6Eccmdo+MGtY7c8jfQz2buA==" {
+		t.Fatalf("captcha row = %#v", got)
+	}
+	if !strings.Contains(ed.Body, "captcha: SFAC") {
+		t.Fatalf("body changed before edit: %q", ed.Body)
+	}
+	// Editing a table row canonicalizes the whole body, including '=' and '+'.
+	ed.formKV.Rows[0].Value = "42"
+	ed.formKV.commit(&ed.Body)
+	if !strings.Contains(ed.Body, "seq=42&account=15774632920") {
+		t.Fatalf("canonical form = %q", ed.Body)
+	}
+	if !strings.Contains(ed.Body, "captcha=SFACwjtzNQdy94iIY2PYjdNp0XkT%2B6KtU%2FEPcqwZg92StupNyYEq7FSnzYRLVxy6Eccmdo%2BMGtY7c8jfQz2buA%3D%3D") {
+		t.Fatalf("captcha encoding = %q", ed.Body)
+	}
+}
