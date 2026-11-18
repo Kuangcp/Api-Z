@@ -224,7 +224,7 @@ func FormatBytes(n int64) string {
 func BuildSpec(method, rawURL, headersText, paramsText, bodyText string, auth Auth, vars map[string]string) httpclient.Spec {
 	params := ParseParams(ApplyVariables(paramsText, vars))
 	params = append(params, ResolveAuthQuery(auth, vars)...)
-	url := ApplyVariables(rawURL, vars)
+	url := ResolveURLVariables(rawURL, vars)
 	url = EnsureDefaultScheme(MergeURLWithParams(url, params))
 
 	headers := HeadersForSend(ParseHeaders(ApplyVariables(headersText, vars)))

@@ -46,11 +46,11 @@ go run . -migrate \
 ## 功能（当前）
 
 - 集合 / 文件夹 / 请求树：集合以左侧 Tab 切换，超出宽度时保留最近使用的几个、其余收进下拉菜单；搜索、展开、键盘/鼠标选择；新建集合/文件夹/请求、重命名、复制请求、上移/下移、移动到文件夹（跨集合/层级）、拖拽排序/拖入文件夹、级联删除（二次确认）。
-- 请求编辑（左）/ 响应（右）左右分栏；编辑内容自动保存（防抖 450ms）：发送按钮为图标；编辑自动保存，无独立保存/代码按钮。方法（窄幅无边框下拉）、URL（`{{变量}}` 强调色文字/底纹高亮）、Params/Headers 文本/表格切换（启用开关、增删行、`! ` 禁用）、Body（JSON/表单/XML/无类型；表单为 Key/Value 表格，发送时按 `application/x-www-form-urlencoded` 编码；无 Body 时保留正文但禁用编辑且不随请求发送、JSON 格式化、高亮编辑器）、Auth（inherit/noauth/bearer/basic/apikey，API Key 位置选择与继承提示）。
+- 请求编辑（左）/ 响应（右）左右分栏；编辑内容自动保存（防抖 450ms）：发送按钮为图标；编辑自动保存，无独立保存/代码按钮。方法（窄幅无边框下拉）、URL（`{{变量}}` 强调色文字/底纹高亮）、Params 表格与地址栏 URL 双向绑定（URL query 自动解析、启用开关、增删行；禁用行存 `params_text` 不发送）、Headers 文本/表格切换（启用开关、增删行、`! ` 禁用）、Body（JSON/表单/XML/无类型；表单为 Key/Value 表格，发送时按 `application/x-www-form-urlencoded` 编码；无 Body 时保留正文但禁用编辑且不随请求发送、JSON 格式化、高亮编辑器）、Auth（inherit/noauth/bearer/basic/apikey，API Key 位置选择与继承提示）。
 - 环境变量 `{{name}}` 替换、环境切换（标题栏 `标签 | 环境名`，标签→环境两级级联菜单，支持无环境/管理环境）、集合/文件夹/请求级 Auth 继承。
 - 环境语义色：按名称自动标记 local/dev 蓝、test/staging 绿、prod/生产 红；环境管理器可选手动颜色或自定义 `#rrggbb`，选择器文案跟随。
 - 环境管理器：多环境、tag 分组、变量增删改、设为当前；保存后立即用于替换。
-- 变量补全：URL/Headers/Params 输入 `{{` 弹出当前环境变量，Body 编辑器用 completion 菜单；插入 `{{key}}` 并保留光标。
+- 变量补全：URL/Headers 输入 `{{` 弹出当前环境变量，Body 编辑器用 completion 菜单；插入 `{{key}}` 并保留光标。
 - 发送 / 取消 / 120s 超时；状态码、耗时、大小、TTFT、TPOT、SSE 事件数；请求树显示运行中 Spinner；编辑防抖 450ms 自动保存，关窗前落盘。
 - 响应：Body / Headers / Request 三页签（Headers 同时展示请求头与响应头，并随 HAR 历史保存）；Raw（虚拟化、自动跟随末尾；SSE `data:` 行带 `HH:mm:ss.SSS` 时间戳，点击事件高亮并在底部弹出可拖动高度的格式化 JSON 详情）、Model（OpenAI/Responses delta 提取）、AG-UI（文本/工具调用/推理/中断卡片、interrupt 自定义 UI、MESSAGES_SNAPSHOT 完整还原）、JSON 美化（Content-Type 为 JSON 时默认自动打开，每个响应只自动展开一次，手动关闭后不再弹）；Request 展示实际发送快照并支持复制；二进制响应可推导文件名、保存到文件或用系统程序打开。
 - 多标签，每个标签独立的编辑与流式响应状态；切换 Tab 时左侧树自动切到对应集合并定位 Request；`Ctrl+Tab` 打开最近请求浮窗（最多 20 个），按住 Ctrl 可连续 `Ctrl+Tab` / `Shift+Ctrl+Tab` 切换，松开 Ctrl、Enter 或点击打开；`Ctrl+K` 全局搜索（空查询默认展示最近使用的 50 个 Request）。

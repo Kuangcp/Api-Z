@@ -124,6 +124,7 @@ func NewEditor(root *Root, req app.Request) *Editor {
 	ed.formKV.Form = true
 	ed.bodyKind = inferBodyKind(ed.Headers)
 	ed.resetBodyEditor()
+	ed.migrateParamsToURL()
 	return ed
 }
 
@@ -275,7 +276,7 @@ func (ed *Editor) requestPane(c *ui.Context) {
 				ed.bodyVer = st.Buffer.Version()
 			}
 		case 1:
-			ed.root.kvEditor(c, ed, "params", "每行 key: value；`! ` 前缀禁用；与 URL 中已有 query 用 & 合并。", &ed.Params, &ed.paramsKV)
+			ed.paramsEditor(c)
 		case 2:
 			ed.root.kvEditor(c, ed, "headers", "每行 Name: Value；`! ` 前缀只编辑不发送。", &ed.Headers, &ed.headersKV)
 		case 3:
