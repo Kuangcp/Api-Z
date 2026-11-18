@@ -5,6 +5,30 @@ Go + [mygo](https://github.com/egoist/mygo) 的本地优先 API 调试客户端�
 面向 Spring Boot / Spring AI / AgentScope / MCP 调试：HTTP、SSE、AG-UI 流式响应、集合/环境、认证继承、HAR 历史。
 设计与阶段见 [`Roadmap.md`](Roadmap.md)。
 
+## 截图
+
+<p align="center">
+  <a href="docs/snapshots/Snipaste_2026-11-19_00-31-42.png">
+    <img src="docs/snapshots/Snipaste_2026-11-19_00-31-42.png"
+         alt="Api-Z 主界面：左侧集合树与请求编辑，右侧 JSON 响应" width="100%">
+  </a>
+</p>
+
+<table>
+  <tr>
+    <td width="25%" valign="top">
+      <a href="docs/snapshots/Snipaste_2026-11-19_00-41-54.png">
+        <img src="docs/snapshots/Snipaste_2026-11-19_00-41-54.png"
+             alt="Api-Z SSE 流式响应：Model 视图与事件统计" width="100%">
+      </a>
+    </td>
+    <!-- 每行 4 列；补截图时把新的 <td> 放在这一行里。 -->
+    <td width="25%"></td>
+    <td width="25%"></td>
+    <td width="25%"></td>
+  </tr>
+</table>
+
 ## 为什么
 
 api-x 在 600K+ SSE / AGUI 响应上受 Compose 的全量文本重建限制。Api-Z 把数据通路改成：
