@@ -169,15 +169,23 @@ func ParseCurl(command string) (CurlRequest, error) {
 	}, nil
 }
 
-// CurlRequestName derives a short display name from a parsed request.
+// CurlRequestName derives a short display name from a parsed request:
+// the last two path segments, or the host when there is no path.
 func CurlRequestName(r CurlRequest) string {
-	u, err := url.Parse(r.URL)
+	rawURL := strings.TrimSpace(r.URL)
+	if rawURL != "" && !strings.Contains(rawURL, "://") {
+		rawURL = EnsureDefaultScheme(rawURL)
+	}
+	u, err := url.Parse(rawURL)
 	if err == nil && u.Host != "" {
-		name := u.Host + u.Path
-		if len([]rune(name)) > 60 {
-			name = string([]rune(name)[:60]) + "…"
+		parts := strings.FieldsFunc(u.Path, func(r rune) bool { return r == '/' })
+		if len(parts) == 0 {
+			return u.Host
 		}
-		return name
+		if len(parts) > 2 {
+			parts = parts[len(parts)-2:]
+		}
+		return strings.Join(parts, "/")
 	}
 	if r.URL != "" {
 		return r.URL

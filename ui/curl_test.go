@@ -157,7 +157,7 @@ func TestCurlImportBelowSelectedRequest(t *testing.T) {
 			names = append(names, req.Name)
 		}
 	}
-	if len(names) != 3 || names[0] != "First" || names[1] != "api.example.com/imported" || names[2] != "Second" {
+	if len(names) != 3 || names[0] != "First" || names[1] != "imported" || names[2] != "Second" {
 		t.Fatalf("order = %v (requests %#v)", names, tree.Requests)
 	}
 }

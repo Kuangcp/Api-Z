@@ -75,9 +75,18 @@ func TestParseCurlErrors(t *testing.T) {
 }
 
 func TestCurlRequestName(t *testing.T) {
-	r := CurlRequest{URL: "https://api.test/v1/pets?x=1"}
-	if got := CurlRequestName(r); got != "api.test/v1/pets" {
-		t.Fatalf("name = %q", got)
+	cases := map[string]string{
+		"https://api.test/v1/pets?x=1":      "v1/pets",
+		"https://api.test/pets":             "pets",
+		"https://api.test/a/b/c/":           "b/c",
+		"https://api.test/":                 "api.test",
+		"https://api.test":                  "api.test",
+		"https://api.test:8443/v1/users/me": "users/me",
+	}
+	for raw, want := range cases {
+		if got := CurlRequestName(CurlRequest{URL: raw}); got != want {
+			t.Errorf("name(%q) = %q, want %q", raw, got, want)
+		}
 	}
 }
 
