@@ -214,7 +214,7 @@ api-z 使用自己的数据目录与 SQLite（WAL）：
 - 响应搜索与 JSON 折叠树仍在第二批。
 
 第三批（请求语义与网络）：
-- Body `表单` 按 `key: value` URL 编码为 wire body。
+- [x] Body `表单` 使用 Key/Value 表格，发送时按 `application/x-www-form-urlencoded` 编码为 wire body。
 - Multipart：文本/JSON/文件 part、文件选择器、MIME 猜测、大文件流式写；cURL `-F` 导入。
 - 网络设置：读取首字节/完整请求超时（已完成）；连接超时、HTTP/1.1/2、HTTP/HTTPS 代理、bypass 正则待补。
 - 自定义 SSE 文本提取路径。

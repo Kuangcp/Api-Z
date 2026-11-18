@@ -31,11 +31,13 @@ type Editor struct {
 	Dirty  bool
 	ReqTab int
 
-	bodyEd  *editor.State
-	bodyVer uint64
+	bodyEd   *editor.State
+	bodyVer  uint64
+	bodyKind int
 
 	paramsKV  kvState
 	headersKV kvState
+	formKV    kvState
 
 	StreamMode  int
 	RespTab     int
@@ -118,6 +120,9 @@ func NewEditor(root *Root, req app.Request) *Editor {
 	}
 	ed.paramsKV.Mode = 1
 	ed.headersKV.Mode = 1
+	ed.formKV.Mode = 1
+	ed.formKV.Form = true
+	ed.bodyKind = inferBodyKind(ed.Headers)
 	ed.resetBodyEditor()
 	return ed
 }
@@ -138,9 +143,25 @@ func (ed *Editor) bodyState() *editor.State {
 }
 
 func (ed *Editor) syncBody() {
-	if ed.bodyEd != nil {
+	if ed.bodyEd != nil && inferBodyKind(ed.Headers) != bodyForm {
 		ed.Body = ed.bodyEd.Buffer.String()
 	}
+}
+
+// ensureBodyKind carries the latest text between the raw editor and the form
+// table when Content-Type is changed from the Headers tab.
+func (ed *Editor) ensureBodyKind(kind int) {
+	if kind == ed.bodyKind {
+		return
+	}
+	if ed.bodyKind != bodyForm && ed.bodyEd != nil {
+		ed.Body = ed.bodyEd.Buffer.String()
+	}
+	ed.formKV.Source = ""
+	if kind != bodyForm {
+		ed.resetBodyEditor()
+	}
+	ed.bodyKind = kind
 }
 
 func (ed *Editor) snapshotRequest() (app.Request, uint64) {
@@ -235,9 +256,17 @@ func (ed *Editor) requestPane(c *ui.Context) {
 		switch ed.ReqTab {
 		case 0:
 			ed.bodyToolbar(c)
+			kind := inferBodyKind(ed.Headers)
+			ed.ensureBodyKind(kind)
+			if kind == bodyForm {
+				ed.root.kvEditor(c, ed, "body",
+					"每行 Key / Value；发送时按 application/x-www-form-urlencoded 编码。",
+					&ed.Body, &ed.formKV)
+				break
+			}
 			st := ed.bodyState()
 			st.Font = ed.root.bodyEditorFont()
-			noBody := inferBodyKind(ed.Headers) == bodyNone
+			noBody := kind == bodyNone
 			st.ReadOnly = noBody
 			view := editor.View(c, st).Grow(1).FillWidth()
 			view.Disabled(noBody)

@@ -110,6 +110,32 @@ func TestBodyTypeSelector(t *testing.T) {
 	if !strings.Contains(ed.Headers, "Content-Type: application/x-www-form-urlencoded") {
 		t.Fatalf("headers = %q", ed.Headers)
 	}
+	if !tt.HasText("添加一行") || !tt.HasText("Key") || !tt.HasText("Value") {
+		t.Fatalf("form table not shown: %v", tt.Texts())
+	}
+}
+
+func TestFormBodyTable(t *testing.T) {
+	_, ed, tt := openEditorTest(t,
+		"Content-Type: application/x-www-form-urlencoded",
+		"a=1&b=hello+world")
+	tt.Frame()
+	if !tt.HasText("添加一行") || !tt.HasText("Key") || !tt.HasText("Value") {
+		t.Fatalf("form table not shown: %v", tt.Texts())
+	}
+	if len(ed.formKV.Rows) != 2 || ed.formKV.Rows[1].Key != "b" || ed.formKV.Rows[1].Value != "hello world" {
+		t.Fatalf("form rows = %#v", ed.formKV.Rows)
+	}
+	ed.formKV.Rows = append(ed.formKV.Rows, kvRow{Enabled: true, Key: "x y", Value: "a&b"})
+	ed.formKV.commit(&ed.Body)
+	ed.Dirty = true
+	tt.Frame()
+	if ed.Body != "a=1&b=hello+world&x+y=a%26b" {
+		t.Fatalf("form body = %q", ed.Body)
+	}
+	if got := string(ed.buildSpec().Body); got != "a=1&b=hello+world&x+y=a%26b" {
+		t.Fatalf("sent form body = %q", got)
+	}
 }
 
 func TestBodyKindHelpers(t *testing.T) {
@@ -219,5 +245,18 @@ func TestMethodChangeUpdatesTree(t *testing.T) {
 		if row.id == ed.ID && row.method != "PATCH" {
 			t.Fatalf("visible row method = %q", row.method)
 		}
+	}
+}
+
+func TestFormBodyFollowsContentTypeHeader(t *testing.T) {
+	_, ed, tt := openEditorTest(t, "Content-Type: application/json", "a=1&b=2")
+	tt.Frame()
+	ed.Headers = "Content-Type: application/x-www-form-urlencoded"
+	tt.Frame()
+	if len(ed.formKV.Rows) != 2 || ed.formKV.Rows[1].Key != "b" {
+		t.Fatalf("form rows = %#v", ed.formKV.Rows)
+	}
+	if !tt.HasText("添加一行") {
+		t.Fatalf("form table not shown: %v", tt.Texts())
 	}
 }

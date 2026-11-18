@@ -422,3 +422,32 @@ func TestSetCollectionOpenAPIBinding(t *testing.T) {
 		t.Fatalf("auth lost on unbind: %s", got)
 	}
 }
+
+func TestParseOpenAPIFormBody(t *testing.T) {
+	doc := `{
+  "openapi": "3.0.0",
+  "info": {"title": "Form", "version": "1"},
+  "paths": {
+    "/login": {"post": {
+      "requestBody": {"content": {"application/x-www-form-urlencoded": {"schema": {
+        "type": "object",
+        "properties": {"user": {"type": "string", "example": "a b"}, "age": {"type": "integer"}}
+      }}}}
+    }}
+  }
+}`
+	p, err := ParseOpenAPI(doc, "http://api.test/openapi.json", "Form", "coll", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p.Portable.Folders) != 1 || len(p.Portable.Folders[0].Requests) != 1 {
+		t.Fatalf("folders = %#v", p.Portable.Folders)
+	}
+	req := p.Portable.Folders[0].Requests[0]
+	if req.BodyText != "age=0&user=a+b" {
+		t.Fatalf("form body = %q", req.BodyText)
+	}
+	if !strings.Contains(req.HeadersText, "Content-Type: application/x-www-form-urlencoded") {
+		t.Fatalf("headers = %q", req.HeadersText)
+	}
+}

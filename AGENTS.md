@@ -98,7 +98,7 @@ api-z 的存在理由就是这条链路。**不要退回全量字符串 + 每帧
 - 颜色一律取 `c.Theme()`；禁止硬编码颜色（数据源/方法色除外，方法色集中在 `methodColor`）。
 - 主题跟随系统；不要自行 SetTheme 覆盖桌面偏好。
 - 请求/响应默认左右 `ui.SplitPercent`（`Root.requestPercent`）；请求区在左、响应区在右。
-- Body 用 mygo `ui/editor`；`无 Body` 时编辑器只读并 `.Disabled(true)`，正文保留但 `buildSpec` 不发送 body。（JSON 高亮、行号、查找），顶部「类型」选择会 upsert/remove Content-Type；JSON 提供格式化按钮。Headers/Params 用 `ui/kv_editor.go` 的文本/表格双模式：表格行带启用开关、增删与 `! ` 禁用语义，文本仍是唯一持久化格式。
+- Body 用 mygo `ui/editor`；`无 Body` 时编辑器只读并 `.Disabled(true)`，正文保留但 `buildSpec` 不发送 body（JSON 高亮、行号、查找）。顶部「类型」选择会 upsert/remove Content-Type；JSON 提供格式化按钮。`表单` 用 `ui/kv_editor.go` 的 Key/Value 表格（无启用开关），文本模式存 URL-encoded body，发送前由 `app.NormalizeFormBody` 统一编码，避免把未编码值直接发出。Headers/Params 用文本/表格双模式：表格行带启用开关、增删与 `! ` 禁用语义，文本仍是唯一持久化格式。
 - 响应区三段：Raw / Model / AGUI；非 SSE 且 JSON 时提供 JSON 美化（只读 editor）。
 - SSE 的 Raw 显示在 `data:` 行前加 `HH:mm:ss.SSS`；`Session` 维护 `lineEvent`/`sseEvents` 映射，点击事件行选中整组行，JSON 事件在底部用只读高亮编辑器展示，高度由 `SplitVerticalPercent`（`Editor.EventSplit`）可拖动。
 - 请求编辑顶部使用发送图标，不提供独立「保存」「代码」按钮；手动保存只保留快捷键，代码导出从请求右键菜单进入。

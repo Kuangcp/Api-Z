@@ -262,10 +262,52 @@ func openAPIRequestBodyExample(doc map[string]any, op map[string]any) string {
 		}
 		return openAPIMediaExample(doc, raw)
 	}
+	for ct, raw := range content {
+		if strings.Contains(strings.ToLower(ct), "x-www-form-urlencoded") {
+			return openAPIFormExample(doc, raw)
+		}
+	}
 	for _, raw := range content {
 		return openAPIMediaExample(doc, raw)
 	}
 	return ""
+}
+
+func openAPIFormExample(doc map[string]any, raw any) string {
+	media, _ := raw.(map[string]any)
+	if media == nil {
+		return ""
+	}
+	var element any = media["example"]
+	if element == nil {
+		if examples, ok := media["examples"].(map[string]any); ok {
+			for _, v := range examples {
+				if ex, ok := v.(map[string]any); ok {
+					element = ex["value"]
+					break
+				}
+			}
+		}
+	}
+	if element == nil {
+		schema, _ := resolveOpenAPIRef(doc, media["schema"]).(map[string]any)
+		element = sampleOpenAPISchema(doc, schema)
+	}
+	if element == nil {
+		return ""
+	}
+	if s, ok := element.(string); ok {
+		return NormalizeFormBody(s)
+	}
+	obj, ok := element.(map[string]any)
+	if !ok {
+		return ""
+	}
+	values := url.Values{}
+	for key, value := range obj {
+		values.Set(key, openAPIPrimitiveText(value))
+	}
+	return values.Encode()
 }
 
 func openAPIMediaExample(doc map[string]any, raw any) string {

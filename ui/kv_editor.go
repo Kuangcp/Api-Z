@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"net/url"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -16,10 +17,11 @@ type kvRow struct {
 // Headers). Text stays the source of truth in the request; the rows are
 // rebuilt whenever the text changes outside the form.
 type kvState struct {
-	Mode   int // 0 text, 1 form
+	Mode   int // 0 text, 1 table
 	Rows   []kvRow
 	Raw    []string
 	Source string
+	Form   bool // body table: URL-encoded key=value instead of Name: Value lines
 }
 
 func parseKV(text string) ([]kvRow, []string) {
@@ -47,7 +49,67 @@ func parseKV(text string) ([]kvRow, []string) {
 	return rows, raw
 }
 
+func looksLikeFormLines(body string) bool {
+	if strings.Contains(body, "&") || strings.Contains(body, "=") {
+		return false
+	}
+	found := false
+	for _, line := range strings.Split(body, "\n") {
+		line = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(line), "! "))
+		if line == "" {
+			continue
+		}
+		if !strings.Contains(line, ":") {
+			return false
+		}
+		found = true
+	}
+	return found
+}
+
+func parseFormKV(text string) ([]kvRow, []string) {
+	if looksLikeFormLines(text) {
+		return parseKV(text)
+	}
+	var rows []kvRow
+	var raw []string
+	for _, part := range strings.Split(text, "&") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		rawKey, rawValue, hasValue := strings.Cut(part, "=")
+		key, err := url.QueryUnescape(rawKey)
+		if err != nil {
+			raw = append(raw, part)
+			continue
+		}
+		row := kvRow{Enabled: true, Key: key}
+		if hasValue {
+			value, err := url.QueryUnescape(rawValue)
+			if err != nil {
+				raw = append(raw, part)
+				continue
+			}
+			row.Value = value
+		}
+		rows = append(rows, row)
+	}
+	return rows, raw
+}
+
+func (kv *kvState) parse(text string) ([]kvRow, []string) {
+	if kv.Form {
+		return parseFormKV(text)
+	}
+	return parseKV(text)
+}
+
 func (kv *kvState) commit(dst *string) {
+	if kv.Form {
+		kv.commitForm(dst)
+		return
+	}
 	lines := make([]string, 0, len(kv.Rows)+len(kv.Raw))
 	for _, row := range kv.Rows {
 		key := strings.TrimSpace(row.Key)
@@ -69,19 +131,41 @@ func (kv *kvState) commit(dst *string) {
 	kv.Source = *dst
 }
 
+func (kv *kvState) commitForm(dst *string) {
+	pairs := make([]string, 0, len(kv.Rows)+len(kv.Raw))
+	for _, row := range kv.Rows {
+		key := strings.TrimSpace(row.Key)
+		if key == "" {
+			continue
+		}
+		pairs = append(pairs, url.QueryEscape(key)+"="+url.QueryEscape(row.Value))
+	}
+	for _, raw := range kv.Raw {
+		if strings.TrimSpace(raw) != "" {
+			pairs = append(pairs, raw)
+		}
+	}
+	*dst = strings.Join(pairs, "&")
+	kv.Source = *dst
+}
+
 // kvEditor renders the text/form toggle and the active editor. field names
 // the autocomplete slot ("params"/"headers").
 func (r *Root) kvEditor(c *ui.Context, ed *Editor, field, hint string, text *string, kv *kvState) {
 	t := c.Theme()
 	if kv.Source != *text {
-		kv.Rows, kv.Raw = parseKV(*text)
+		kv.Rows, kv.Raw = kv.parse(*text)
 		kv.Source = *text
 	}
 	mode := kv.Mode
-	if ui.Segmented(c, &kv.Mode, "文本", "表单").Label("编辑模式").Changed() {
+	tableLabel := "表单"
+	if kv.Form {
+		tableLabel = "表格"
+	}
+	if ui.Segmented(c, &kv.Mode, "文本", tableLabel).Label("编辑模式").Changed() {
 		kv.Source = ""
 		if kv.Mode == 1 {
-			kv.Rows, kv.Raw = parseKV(*text)
+			kv.Rows, kv.Raw = kv.parse(*text)
 			kv.Source = *text
 		}
 	}
@@ -103,7 +187,9 @@ func (r *Root) kvEditor(c *ui.Context, ed *Editor, field, hint string, text *str
 
 	ui.Text(c, hint).FontSize(10.5).TextColor(t.TextMuted).Padding(2, 2)
 	ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, "启用").FontSize(10.5).TextColor(t.TextMuted).Width(34)
+		if !kv.Form {
+			ui.Text(c, "启用").FontSize(10.5).TextColor(t.TextMuted).Width(34)
+		}
 		ui.Text(c, "Key").FontSize(10.5).TextColor(t.TextMuted).Width(170)
 		ui.Text(c, "Value").FontSize(10.5).TextColor(t.TextMuted).Grow(1)
 		ui.Box(c).Width(28)
@@ -114,11 +200,18 @@ func (r *Root) kvEditor(c *ui.Context, ed *Editor, field, hint string, text *str
 			i := i
 			row := &kv.Rows[i]
 			ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
-				enabled := ui.Checkbox(c, &row.Enabled, "").Label("启用该行")
+				var enabled ui.Element
+				if !kv.Form {
+					enabled = ui.Checkbox(c, &row.Enabled, "").Label("启用该行")
+				}
 				key := ui.TextInput(c, &row.Key).Placeholder("Key").Width(170)
 				value := ui.TextInput(c, &row.Value).Placeholder("Value").Grow(1)
 				del := iconButtonPlain(c, iconX, "删除该行")
-				if enabled.Changed() || key.Changed() || value.Changed() {
+				changed := key.Changed() || value.Changed()
+				if !kv.Form {
+					changed = enabled.Changed() || changed
+				}
+				if changed {
 					kv.commit(text)
 					ed.Dirty = true
 				}

@@ -233,11 +233,15 @@ func BuildSpec(method, rawURL, headersText, paramsText, bodyText string, auth Au
 	for _, h := range headers {
 		hdr = append(hdr, httpclient.Header{Name: h.Name, Value: h.Value})
 	}
+	body := ApplyVariables(bodyText, vars)
+	if IsFormContentType(HeaderValue(headers, "Content-Type")) {
+		body = NormalizeFormBody(body)
+	}
 	return httpclient.Spec{
 		Method:         method,
 		URL:            url,
 		Headers:        hdr,
-		Body:           []byte(ApplyVariables(bodyText, vars)),
+		Body:           []byte(body),
 		RequestTimeout: 120 * time.Second,
 	}
 }
