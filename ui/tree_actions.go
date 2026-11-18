@@ -94,9 +94,23 @@ func (r *Root) treeContextMenu(c *ui.Context, m *ui.Menu, row treeRow) {
 	}
 }
 
-// copyRequestCurl copies a tree request as cURL with the current
-// environment and inherited auth applied, without opening it.
+func (r *Root) editorByID(id string) *Editor {
+	for _, ed := range r.tabs {
+		if ed.ID == id {
+			return ed
+		}
+	}
+	return nil
+}
+
+// copyRequestCurl copies a request as cURL. An open editor is preferred so
+// unsaved URL/header/body/auth edits are included in the command.
 func (r *Root) copyRequestCurl(c *ui.Context, id string) {
+	if ed := r.editorByID(id); ed != nil {
+		c.WriteClipboard(app.FormatCurl(ed.buildSpec()))
+		c.Toast("已复制 cURL")
+		return
+	}
 	req, ok := r.tree.Request(id)
 	if !ok {
 		return
@@ -109,6 +123,11 @@ func (r *Root) copyRequestCurl(c *ui.Context, id string) {
 
 // copyRequestRawHTTP copies the same resolved request as a raw HTTP message.
 func (r *Root) copyRequestRawHTTP(c *ui.Context, id string) {
+	if ed := r.editorByID(id); ed != nil {
+		c.WriteClipboard(app.FormatHTTP(ed.buildSpec()))
+		c.Toast("已复制 Raw HTTP")
+		return
+	}
 	req, ok := r.tree.Request(id)
 	if !ok {
 		return

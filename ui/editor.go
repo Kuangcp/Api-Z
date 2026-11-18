@@ -18,15 +18,16 @@ import (
 type Editor struct {
 	root *Root
 
-	ID       string
-	Name     string
-	Method   string
-	URL      string
-	Headers  string
-	Params   string
-	Body     string
-	MetaJSON string
-	Auth     app.Auth
+	ID          string
+	Name        string
+	Method      string
+	URL         string
+	Headers     string
+	Params      string
+	Body        string
+	MetaJSON    string
+	Auth        app.Auth
+	authVisible map[string]bool
 
 	Dirty  bool
 	ReqTab int
@@ -110,6 +111,7 @@ func NewEditor(root *Root, req app.Request) *Editor {
 		Body:              req.BodyText,
 		MetaJSON:          req.MetaJSON,
 		Auth:              app.ParseAuth(req.MetaJSON),
+		authVisible:       map[string]bool{},
 		md:                markdown.Options{},
 		SelectedEvent:     -1,
 		EventSplit:        70,
@@ -326,6 +328,9 @@ func (ed *Editor) requestHeader(c *ui.Context) {
 		if url.Submitted() {
 			ed.send()
 		}
+		if iconButtonPlain(c, iconCopy, "复制 cURL").Clicked() {
+			ed.copyCurl(c)
+		}
 		if !running {
 			if iconButton(c, iconSend, "发送").Clicked() {
 				ed.send()
@@ -401,7 +406,24 @@ func (ed *Editor) authField(c *ui.Context, label, key string, list *[]app.AuthPr
 		ui.Text(c, label).Width(140).TextColor(t.TextMuted)
 		input := ui.TextInput(c, &val).Grow(1)
 		if secret {
-			input = input.Password()
+			shown := ed.authVisible[key]
+			if !shown {
+				input = input.Password()
+			}
+			eyeLabel := "显示 " + label
+			eyeIcon := iconEye
+			if shown {
+				eyeLabel = "隐藏 " + label
+				eyeIcon = iconEyeOff
+			}
+			if iconButtonPlain(c, eyeIcon, eyeLabel).Clicked() {
+				ed.authVisible[key] = !shown
+			}
+			copyBtn := iconButtonPlain(c, iconCopy, "复制 "+label).Disabled(val == "")
+			if copyBtn.Clicked() {
+				c.WriteClipboard(val)
+				c.Toast("已复制 " + label)
+			}
 		}
 		if input.Changed() {
 			setAuthValue(list, key, val)
@@ -459,6 +481,11 @@ func (ed *Editor) buildSpec() httpclient.Spec {
 	spec.ReadTimeout = time.Duration(readMS) * time.Millisecond
 	spec.RequestTimeout = time.Duration(totalMS) * time.Millisecond
 	return spec
+}
+
+func (ed *Editor) copyCurl(c *ui.Context) {
+	c.WriteClipboard(app.FormatCurl(ed.buildSpec()))
+	c.Toast("已复制 cURL")
 }
 
 func (ed *Editor) send() {

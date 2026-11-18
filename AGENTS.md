@@ -111,7 +111,7 @@ api-z 的存在理由就是这条链路。**不要退回全量字符串 + 每帧
 - Git 同步走 `app/syncservice.go` + `sync/`：共享仓库只写 `api-z/`，根 README 不生成/不修改。格式 v2：`collections/<id>/collection.json` 明文保存集合名/多级目录/Request ID+名称；`settings.enc` 加密集合/目录 meta（Auth、OpenAPI 等）；`requests/<id>.enc` 每请求一个加密文件；`env/environments.enc` 加密环境。未变化明文必须复用已有密文；不支持旧版单集合 `.enc`。
 - `data/` 目录 Push/Pull 走 `app/data_sync.go`：集合 `data/collection/<id>.json`、环境 `data/env/environments.json`；Pull 按集合 id upsert、环境按 id 合并且不删除本地项。UI 动作在 `ui/data_sync.go`。
 - Postman 导入/导出走 `app/postman.go` 的 `PortableCollection`；不要直接改 JSON 或复制 api-x 字段逻辑。导入生成新 id，导出保留 `_api_x_id` 供回导/合并；禁用 Header/query 用 `! ` 前缀；auth 为空/inherit 时导出省略。
-- 请求右键菜单只保留复制请求/复制 cURL/移动到文件夹/删除；打开用单击，重命名用双击请求行；复制 cURL 走 `app.BuildSpec` + `FormatCurl`，不要另写一套变量/Auth 解析。
+- 请求右键菜单只保留复制请求/复制 cURL/移动到文件夹/删除；打开用单击，重命名用双击请求行；复制 cURL 走 `app.BuildSpec` + `FormatCurl`，不要另写一套变量/Auth 解析。请求已打开时优先用 `Editor.buildSpec`，确保未保存的 URL/Header/Body/Auth 也进入命令；请求头工具栏的「复制 cURL」同理。
 - cURL 解析走 `app/curl.go`（sh tokenizer、ANSI-C 引号、常见 flags）；UI 在 `ui/curl.go`。标题栏 cURL 图标与树右键「解析 cURL」都直接读取剪贴板最新内容，目标是显式 collection/folder/request 或当前选中的 collection/folder；Request 右键用 `curlTargetForNode` 返回 afterID 插到该请求下方；标题栏入口若选中 Request，则用 `nextSiblingID` + `MoveNodeBefore` 插到该请求下方；无选中时落到当前集合根。cURL 解析失败只用 `c.Toast` 浮动提示，不再写底栏 `r.err`，避免重复。暂不支持 `-F/--form`，遇到应明确报错，不要静默生成错误请求。
 - 图标用 Lucide 描线，集中放在 `ui/icons.go`，通过 `iconButton` / `iconButtonPlain` / `iconMenuButton` 使用；图标按钮必须有 `Label`（读屏）和 `Tooltip`，禁止手写零散 SVG。
 - 应用图标源文件 `assets/icon.svg`，`tools/genicon.sh` 用 rsvg-convert 生成 `icon-128/256/512.png`；`main.go` 嵌入 256 图标。不要手改 PNG。

@@ -287,3 +287,48 @@ func TestFormBodyParsesLegacyLinesWithBase64(t *testing.T) {
 		t.Fatalf("captcha encoding = %q", ed.Body)
 	}
 }
+
+func TestAuthTokenVisibilityCopyAndCurl(t *testing.T) {
+	_, ed, tt := openEditorTest(t, "", "")
+	ed.Auth = app.Auth{Type: "bearer", Bearer: []app.AuthProperty{{Key: "token", Value: "s3cret", Type: "string"}}}
+	ed.Headers = "X-Test: 1"
+	tt.Frame()
+	if err := tt.Click("Auth"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if !tt.HasText("显示 Token") || !tt.HasText("复制 Token") {
+		t.Fatalf("token actions missing: %v", tt.Texts())
+	}
+	if err := tt.Click("显示 Token"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if !ed.authVisible["token"] || !tt.HasText("隐藏 Token") {
+		t.Fatalf("token not shown: visible=%v texts=%v", ed.authVisible["token"], tt.Texts())
+	}
+	if err := tt.Click("复制 Token"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if got := tt.Clipboard(); got != "s3cret" {
+		t.Fatalf("token clipboard = %q", got)
+	}
+	if err := tt.Click("隐藏 Token"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if ed.authVisible["token"] {
+		t.Fatal("token still visible")
+	}
+	if err := tt.Click("复制 cURL"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	got := tt.Clipboard()
+	for _, want := range []string{"curl -X POST", "Authorization: Bearer s3cret", "X-Test: 1"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("cURL = %q, want %q", got, want)
+		}
+	}
+}

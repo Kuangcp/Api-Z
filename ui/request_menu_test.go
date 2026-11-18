@@ -107,3 +107,36 @@ func TestRequestMenuParseCurlBelow(t *testing.T) {
 		t.Fatalf("order = %v", names)
 	}
 }
+
+func TestRequestMenuCurlUsesOpenEditor(t *testing.T) {
+	store, paths := collectionTestStore(t)
+	cid, _ := store.CreateCollection("Demo")
+	rid, _ := store.CreateRequest(cid, "", "Echo")
+	_ = store.SaveRequest(app.Request{ID: rid, Name: "Echo", Method: "GET", URL: "https://example.com/original"})
+	tree, _ := store.LoadTree()
+	root := NewRoot(paths, store, tree, app.EnvState{Version: 1})
+	tt := ui.NewTester(root.View, 1200, 800)
+	tt.Frame()
+	root.openRequest(rid)
+	ed := root.tabs[0]
+	ed.Method = "PATCH"
+	ed.URL = "https://example.com/edited"
+	ed.Headers = "X-Live: 1"
+	ed.Auth = app.Auth{Type: "bearer", Bearer: []app.AuthProperty{{Key: "token", Value: "editor-token", Type: "string"}}}
+	tt.Frame()
+
+	if err := tt.RightClick("GET Echo"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if err := tt.ChooseMenuItem("复制 cURL"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	got := tt.Clipboard()
+	for _, want := range []string{"curl -X PATCH", "https://example.com/edited", "X-Live: 1", "Authorization: Bearer editor-token"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("cURL = %q, want %q", got, want)
+		}
+	}
+}

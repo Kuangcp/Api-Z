@@ -46,7 +46,7 @@ go run . -migrate \
 ## 功能（当前）
 
 - 集合 / 文件夹 / 请求树：集合以左侧 Tab 切换，超出宽度时保留最近使用的几个、其余收进下拉菜单；搜索、展开、键盘/鼠标选择；新建集合/文件夹/请求、重命名、复制请求、上移/下移、移动到文件夹（跨集合/层级）、拖拽排序/拖入文件夹、级联删除（二次确认）。
-- 请求编辑（左）/ 响应（右）左右分栏；编辑内容自动保存（防抖 450ms）：发送按钮为图标；编辑自动保存，无独立保存/代码按钮。方法（窄幅无边框下拉）、URL（`{{变量}}` 强调色文字/底纹高亮）、Params 表格与地址栏 URL 双向绑定（URL query 自动解析、启用开关、增删行；禁用行存 `params_text` 不发送）、Headers 文本/表格切换（启用开关、增删行、`! ` 禁用）、Body（JSON/表单/XML/无类型；表单为 Key/Value 表格，发送时按 `application/x-www-form-urlencoded` 编码；无 Body 时保留正文但禁用编辑且不随请求发送、JSON 格式化、高亮编辑器）、Auth（inherit/noauth/bearer/basic/apikey，API Key 位置选择与继承提示）。
+- 请求编辑（左）/ 响应（右）左右分栏；编辑内容自动保存（防抖 450ms）：发送按钮为图标；编辑自动保存，无独立保存/代码按钮。方法（窄幅无边框下拉）、URL（`{{变量}}` 强调色文字/底纹高亮）、Params 表格与地址栏 URL 双向绑定（URL query 自动解析、启用开关、增删行；禁用行存 `params_text` 不发送）、Headers 文本/表格切换（启用开关、增删行、`! ` 禁用）、Body（JSON/表单/XML/无类型；表单为 Key/Value 表格，发送时按 `application/x-www-form-urlencoded` 编码；无 Body 时保留正文但禁用编辑且不随请求发送、JSON 格式化、高亮编辑器）、Auth（inherit/noauth/bearer/basic/apikey，API Key 位置选择与继承提示；Token、密码、API Key 支持显示明文、一键复制）。
 - 环境变量 `{{name}}` 替换、环境切换（标题栏 `标签 | 环境名`，标签→环境两级级联菜单，支持无环境/管理环境）、集合/文件夹/请求级 Auth 继承。
 - 环境语义色：按名称自动标记 local/dev 蓝、test/staging 绿、prod/生产 红；环境管理器可选手动颜色或自定义 `#rrggbb`，选择器文案跟随。
 - 环境管理器：多环境、tag 分组、变量增删改、设为当前；保存后立即用于替换。
@@ -63,7 +63,7 @@ go run . -migrate \
 - HAR 落盘与最近 10 次历史回看；历史 SSE 同样支持 Raw/Model/AGUI 切换、事件行高亮与可调高度 JSON 详情。
 - api-x 只读识别 + 一次性迁移（SQLite、environments.json、response artifacts）。
 - Postman Collection v2.1 导入/导出：嵌套文件夹、根请求、auth、禁用 Header、raw/urlencoded body、query/params、集合变量与描述；保留 `_api_x_id` 便于回导。
-- cURL 导入/导出：标题栏 cURL 图标或集合/文件夹/Request 右键「解析 cURL」直接读取剪贴板最新命令并创建请求（Request 右键建在其下方；选中 Request 时插到该 Request 下方；选中文件夹则建在其下；否则建在当前集合根）；手动粘贴对话框仍保留；支持 `-X/-H/-d/-u/-b/-A/-e/-G/--json`、`$'...'` 与续行。请求树右键提供「复制 cURL」「复制为 Raw HTTP」（均已应用环境变量与 Auth）。
+- cURL 导入/导出：标题栏 cURL 图标或集合/文件夹/Request 右键「解析 cURL」直接读取剪贴板最新命令并创建请求（Request 右键建在其下方；选中 Request 时插到该 Request 下方；选中文件夹则建在其下；否则建在当前集合根）；手动粘贴对话框仍保留；支持 `-X/-H/-d/-u/-b/-A/-e/-G/--json`、`$'...'` 与续行。请求树右键提供「复制 cURL」「复制为 Raw HTTP」，请求头工具栏也有「复制 cURL」；已打开编辑器时使用当前未保存内容，均已应用环境变量、Params 与 Auth。
 - `data/` 目录 Push/Pull：集合导出为 `data/collection/<id>.json`（Postman v2.1，保留 `_api_x_id`），环境写 `data/env/environments.json`；Pull 按 id 新增/合并，不删除本地数据。
 - Git 同步：设置「同步」页配置仓库/分支/SSH 私钥；集合结构（名称/目录/Request ID 与名称）以明文 `collection.json` 写入共享仓库，集合设置与每个 Request 内容分别加密（`settings.enc`、`requests/<id>.enc`），环境加密；未变化文件复用原密文，克隆/拉取/合并后导入、提交先合并再推送。仓库根目录 README 不由本应用生成或修改，可与 db-g 共用同一仓库。
 - OpenAPI 导入/刷新：`tags` → 文件夹、path/operation → 请求，支持 servers/环境变量 root、query/header 参数、JSON/multipart 示例；刷新按请求 ID / `METHOD + normalized path` / operationId 合并，保留本地 URL/Headers/Params/Body/Auth，路径参数填了具体值也不会新增副本；复制请求或跨集合移动会解除 OpenAPI 绑定；不删除服务端已移除的接口。
